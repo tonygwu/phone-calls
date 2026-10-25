@@ -1,0 +1,82 @@
+{
+  "view": "agent-session",
+  "title": "What one telephone conversation can know and do — data examples and schemas",
+  "cards": [
+    {
+      "record": "entity",
+      "id": "initiation",
+      "name": "Fresh provider conversation",
+      "lifecycle": "existing",
+      "confidence": "verified",
+      "format": "json",
+      "fields": [
+        "agent_id, agent_phone_number_id, to_number: configured identities and validated destination",
+        "conversation_initiation_client_data.user_id: durable call UUID",
+        "conversation_initiation_client_data.dynamic_variables: task_type, objective, context, owner_name, callback_number, voicemail_action/message",
+        "success_criteria and all constraints arrays are JSON-encoded strings inside dynamic_variables",
+        "conversation_config_override.conversation.max_duration_seconds: approved duration",
+        "call_recording_enabled: false",
+        "telephony_call_config.ringing_timeout_secs: 60"
+      ],
+      "evidence": [
+        {
+          "source": "src/agent.ts",
+          "symbol": "dispatchBody"
+        }
+      ],
+      "uses": [
+        "Input to ElevenLabs telephone agent [voice-agent]"
+      ]
+    },
+    {
+      "record": "entity",
+      "id": "result",
+      "name": "Outcome and evidence",
+      "lifecycle": "existing",
+      "confidence": "verified",
+      "format": "json",
+      "fields": [
+        "telephone_status: separate from objective",
+        "task_outcome: explicit uncertainty or assessed result",
+        "delivery_verified: false; receipt requires owner confirmation",
+        "cost: known charge or null, and allowance",
+        "transcript: optional paginated turns",
+        "recording_url: authenticated stream"
+      ],
+      "evidence": [
+        {
+          "source": "src/engine.ts",
+          "symbol": "view"
+        }
+      ],
+      "uses": []
+    },
+    {
+      "record": "entity",
+      "id": "provider-conversation",
+      "name": "Raw ElevenLabs conversation",
+      "lifecycle": "existing",
+      "confidence": "verified",
+      "format": "json",
+      "fields": [
+        "agent_id, conversation_id, user_id: identities",
+        "status: initiated, in-progress, processing, done or failed",
+        "metadata: start_time_unix_secs, call_duration_secs, cost_fiat, Twilio phone identity",
+        "transcript: timed role/message/tool turns",
+        "analysis: summary and collected outcome/confirmation/unresolved values",
+        "has_audio: recording availability"
+      ],
+      "evidence": [
+        {
+          "source": "src/providers.ts",
+          "symbol": "conversationSchema"
+        }
+      ],
+      "uses": [
+        "Output from ElevenLabs telephone agent [voice-agent]"
+      ]
+    }
+  ],
+  "missing_stores": [],
+  "store_names": {}
+}

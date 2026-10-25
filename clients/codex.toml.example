@@ -1,0 +1,2 @@
+[mcp_servers.phone_calls]
+url = "https://YOUR_PRIVATE_HOSTNAME/mcp"

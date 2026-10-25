@@ -1,0 +1,7 @@
+# Copy to .dev.vars and chmod 600 .dev.vars. Never paste these into chat.
+ELEVENLABS_API_KEY=
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+# Optional when signed into cf. Needed for unattended account administration.
+CLOUDFLARE_API_TOKEN=
+CLOUDFLARE_ACCOUNT_ID=

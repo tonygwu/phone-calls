@@ -1,0 +1,97 @@
+specification {
+  element deterministic { style { shape rectangle color blue } }
+  element bounded_llm { style { shape rectangle color indigo } }
+  element agent { style { shape rectangle color red } }
+  element human { style { shape person color gray } }
+  element client { style { shape browser color blue } }
+  element external { style { shape rectangle color amber } }
+  element datastore { style { shape storage color green } }
+  element queue { style { shape queue color amber } }
+  element scheduler { style { shape rectangle color amber } }
+  element worker { style { shape rectangle color blue } }
+  relationship sync { line solid }
+  relationship async { line dotted }
+}
+model {
+  client = client 'MCP client' 'Primary Codex, ChatGPT and Claude Code submit authorized briefs and retrieve results. Three additional Claude profiles still need login.' {
+    metadata {
+      lifecycle 'existing'
+      confidence 'verified'
+      source 'private/client-evaluation.json'
+      source 'docs/CLIENTS.md'
+    }
+  }
+  worker = worker 'Authenticated Worker' 'Checks owner identity and provider signatures.' {
+    metadata {
+      lifecycle 'existing'
+      confidence 'verified'
+      source 'src/index.ts'
+    }
+  }
+  ledger = deterministic 'Durable call coordinator' 'Admits one call, reserves budget and reconciles evidence.' {
+    metadata {
+      lifecycle 'existing'
+      confidence 'verified'
+      source 'src/engine.ts'
+    }
+  }
+  storage = datastore 'SQLite storage' 'Persists tasks before dialing and deletes content after 30 days.' {
+    metadata {
+      lifecycle 'existing'
+      confidence 'verified'
+      source 'src/store.ts'
+    }
+  }
+  access = external 'Cloudflare Access login' 'Supplies a signed owner assertion after OAuth login.' {
+    metadata {
+      lifecycle 'existing'
+      confidence 'verified'
+      source 'scripts/provision.ts'
+      source 'private/ordinary-rollout/setup-before.json'
+    }
+  }
+  twilio = external 'Twilio telephone connection' 'Provides the dedicated number, call status and forced hangup.' {
+    metadata {
+      lifecycle 'existing'
+      confidence 'verified'
+      source 'src/providers.ts'
+      source 'private/ordinary-rollout/setup-before.json'
+    }
+  }
+  voice_agent = agent 'ElevenLabs telephone agent' 'Uses supplied facts and authority to conduct one conversation; behavior requires checking against evidence.' {
+    metadata {
+      lifecycle 'existing'
+      confidence 'verified'
+      source 'src/agent.ts'
+      source 'private/ordinary-rollout/setup-before.json'
+      source 'docs/evidence/conversation-simulations.json'
+      source 'docs/evidence/conversation-transcripts.json'
+      source 'private/ordinary-rollout/after.raw.json'
+      model 'gpt-4.1-mini; fallback disabled'
+      prompt 'src/agent.ts AGENT_PROMPT'
+      tool 'end_call: hang up'
+      tool 'voicemail_detection: handle an answering machine'
+      tool 'play_keypad_touch_tone: navigate menus'
+      tool 'skip_turn: wait through speech or hold'
+    }
+  }
+  client -[sync]-> worker 'Submit authorized task | Authorized brief [brief]'
+  worker -[sync]-> ledger 'Route owner operation | Authorized brief [brief]'
+  ledger -[sync]-> storage 'Persist before the provider request | Call tasks [calls]'
+  ledger -[sync]-> voice_agent 'Initiate once with fresh context | Fresh provider conversation [initiation]'
+  ledger -[sync]-> twilio 'Read status and request termination'
+  voice_agent -[async]-> worker 'Signed callback wakes reconciliation'
+  ledger -[sync]-> voice_agent 'Read conversation; returns raw provider evidence | Raw ElevenLabs conversation [provider-conversation]'
+  worker -[sync]-> client 'Return separate status and outcome | Outcome and evidence [result]'
+  access -[sync]-> worker 'Signed owner identity'
+  ledger -[sync]-> voice_agent 'Check agent, number and credits before admission | Provider admission facts [admission]'
+  ledger -[sync]-> twilio 'Check account, routing, balance and current rate before admission | Provider admission facts [admission]'
+  ledger -[sync]-> twilio 'Read telephone status and charge | Raw Twilio call state [provider-call]'
+}
+views {
+  view overview {
+    title 'How one authorized call reaches an outcome'
+    include *
+    autoLayout LeftRight
+  }
+}

@@ -1,0 +1,64 @@
+direction: right
+label: "How calls survive disconnects\nHow are redials, overruns and retained private content prevented?\nSaved dispatch state prevents redial. Active-call checks take priority over old analysis or billing work; termination requests can repeat until confirmed. Ordered provider observations cannot regress final results. At 30 days content expires and unresolved calls leave a content-free block."
+n_ledger: "Durable call coordinator\nProgram step - fixed rules | EXISTING\nAdmits one call, reserves budget and reconciles evidence." {
+  shape: rectangle
+  style.fill: "#dbeafe"
+  style.stroke: "#2563eb"
+}
+n_storage: "SQLite storage\nSaved data | EXISTING | [storage]\nPersists tasks before dialing and deletes content after 30 days." {
+  shape: cylinder
+  style.fill: "#dcfce7"
+  style.stroke: "#16a34a"
+}
+n_alarm: "Persistent watchdog\nSchedule - starts work at a set time | EXISTING\nResumes work, enforces deadlines and purges expired content." {
+  shape: rectangle
+  style.fill: "#fef9c3"
+  style.stroke: "#ca8a04"
+}
+n_twilio: "Twilio telephone connection\nExternal software or service | EXISTING\nProvides the dedicated number, call status and forced hangup." {
+  shape: parallelogram
+  style.fill: "#fef3c7"
+  style.stroke: "#d97706"
+}
+n_voice_agent: "ElevenLabs telephone agent\nAgent - chooses its next action | EXISTING\nUses supplied facts and authority to conduct one conversation; behavior requires checking against evidence." {
+  shape: rectangle
+  style.fill: "#fee2e2"
+  style.stroke: "#dc2626"
+}
+n_ledger -> n_storage: "Persist before the provider request | Call tasks [calls]"
+n_alarm -> n_ledger: "Resume dispatch or enforce deadline" { style.stroke-dash: 5 }
+n_ledger -> n_alarm: "Save the earliest alarm" { style.stroke-dash: 5 }
+n_ledger -> n_voice_agent: "Initiate once with fresh context | Fresh provider conversation [initiation]"
+n_ledger -> n_twilio: "Read status and request termination"
+n_ledger -> n_voice_agent: "Read conversation; returns raw provider evidence | Raw ElevenLabs conversation [provider-conversation]"
+n_ledger -> n_voice_agent: "Check agent, number and credits before admission | Provider admission facts [admission]"
+n_ledger -> n_twilio: "Check account, routing, balance and current rate before admission | Provider admission facts [admission]"
+n_ledger -> n_twilio: "Read telephone status and charge | Raw Twilio call state [provider-call]"
+legend: "Key - colors and shapes identify roles" {
+keyagent: "Agent - chooses its next action" {
+  shape: rectangle
+  style.fill: "#fee2e2"
+  style.stroke: "#dc2626"
+}
+keydatastore: "Saved data" {
+  shape: cylinder
+  style.fill: "#dcfce7"
+  style.stroke: "#16a34a"
+}
+keydeterministic: "Program step - fixed rules" {
+  shape: rectangle
+  style.fill: "#dbeafe"
+  style.stroke: "#2563eb"
+}
+keyexternal: "External software or service" {
+  shape: parallelogram
+  style.fill: "#fef3c7"
+  style.stroke: "#d97706"
+}
+keyscheduler: "Schedule - starts work at a set time" {
+  shape: rectangle
+  style.fill: "#fef9c3"
+  style.stroke: "#ca8a04"
+}
+keylines: "Solid arrow: synchronous call or data transfer. Dashed arrow: asynchronous, scheduled, or agent launch."
+}

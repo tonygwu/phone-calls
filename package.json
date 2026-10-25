@@ -1,0 +1,41 @@
+{
+  "name": "phone-calls-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "cf dev",
+    "build": "cf build",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "npm run typecheck && npm test && npm run build",
+    "deploy": "node scripts/deploy.mjs",
+    "preflight": "node --env-file-if-exists=.dev.vars scripts/preflight.mjs",
+    "inspect:accounts": "node --env-file-if-exists=.dev.vars --import tsx scripts/account-inspect.ts",
+    "provision:prepare": "node --env-file-if-exists=.dev.vars --import tsx scripts/provision.ts prepare",
+    "provision:apply": "node --env-file-if-exists=.dev.vars --import tsx scripts/provision.ts apply"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.3.1",
+    "agents": "0.30.1",
+    "jose": "6.2.2",
+    "libphonenumber-js": "1.12.31",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "2.0.0-beta.v.4",
+    "@cloudflare/vitest-plugin": "1.4.7",
+    "@cloudflare/workers-types": "latest",
+    "@modelcontextprotocol/client": "2.3.1",
+    "@types/node": "^24.0.0",
+    "cf": "1.0.0-beta.21",
+    "node": "24.22.0",
+    "tsx": "4.22.0",
+    "typescript": "^5.9.0",
+    "vitest": "4.1.12"
+  },
+  "overrides": {
+    "zod": "$zod",
+    "undici": "7.30.1"
+  }
+}

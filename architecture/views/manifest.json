@@ -1,0 +1,40 @@
+{
+  "files": [
+    "sources/overview.mmd",
+    "sources/overview.figjam.mmd",
+    "sources/overview.d2",
+    "sources/likec4/overview/model.c4",
+    "data/overview.json",
+    "data/overview.html",
+    "agents/overview.json",
+    "agents/overview.html",
+    "sources/recovery.mmd",
+    "sources/recovery.figjam.mmd",
+    "sources/recovery.d2",
+    "sources/likec4/recovery/model.c4",
+    "data/recovery.json",
+    "data/recovery.html",
+    "agents/recovery.json",
+    "agents/recovery.html",
+    "sources/agent-session.mmd",
+    "sources/agent-session.figjam.mmd",
+    "sources/agent-session.d2",
+    "sources/likec4/agent-session/model.c4",
+    "data/agent-session.json",
+    "data/agent-session.html",
+    "agents/agent-session.json",
+    "agents/agent-session.html",
+    "README.md"
+  ],
+  "likec4_executable": null,
+  "renderer_requested": "auto",
+  "renderer_used": "none",
+  "renders": [],
+  "schema": "1.0",
+  "unverified_existing_pngs": [],
+  "views": [
+    "overview",
+    "recovery",
+    "agent-session"
+  ]
+}

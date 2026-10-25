@@ -1,0 +1,66 @@
+
+> phone-calls-mcp@0.1.0 test
+> vitest run --config review.vitest.config.ts
+
+
+ RUN  v4.1.12 /private/tmp/destination-price-review-n2y0go51
+
+ ✓ test/providers.test.ts > provider preflight and schemas > checks account, agent, route, live credits, price and budget quote 17ms
+ ✓ test/providers.test.ts > provider preflight and schemas > blocks unsafe or unknown account before spending 2ms
+ ✓ test/providers.test.ts > provider preflight and schemas > blocks unsafe or unknown agent before spending 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > blocks unsafe or unknown sms before spending 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > blocks unsafe or unknown credits before spending 2ms
+ ✓ test/providers.test.ts > provider preflight and schemas > blocks unsafe or unknown price before spending 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > blocks unsafe or unknown stale before spending 0ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: destination 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: origin 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: missing_origin 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: empty_prices 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: multiple_prices 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: missing_price 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: negative 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: nonfinite 1ms
+ × test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: missing_prefixes 3ms
+   → promise resolved "{ reservationMicros: 362000, …(8) }" instead of rejecting
+ ✓ test/providers.test.ts > provider preflight and schemas > fails loud on missing dispatch telemetry 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects an unsafe voice_fallback_url independently 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects an unsafe sms_fallback_url independently 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: missing_prefixes
+AssertionError: promise resolved "{ reservationMicros: 362000, …(8) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "accountSid": "AC11111111111111111111111111111111",
++   "agentId": "agent_test",
++   "checkedAt": 1792904400000,
++   "creditsAvailable": 99900,
++   "model": "gpt-4.1-mini",
++   "reservationMicros": 362000,
++   "twilioBalanceUsd": 10,
++   "twilioPerMinuteUsd": 0.014,
++   "voiceId": "stock_voice",
+  }
+
+ ❯ test/providers.test.ts:58:56
+     56|     if (variant === "nonfinite") price.outbound_call_prices[0].current…
+     57|     if (variant === "missing_prefixes") delete price.outbound_call_pri…
+     58|     await expect(p.preflight(cfg.selfNumber, 180, NOW)).rejects.toThro…
+       |                                                        ^
+     59|   });
+     60|   it("fails loud on missing dispatch telemetry", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 18 passed (19)
+   Start at  10:47:25
+   Duration  155ms (transform 26ms, setup 0ms, import 64ms, tests 35ms, environment 0ms)
+

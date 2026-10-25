@@ -1,0 +1,80 @@
+
+> phone-calls-mcp@0.1.0 test
+> vitest run --config review.vitest.config.ts
+
+
+ RUN  v4.1.12 /private/tmp/destination-price-review-n2y0go51
+
+ × test/providers.test.ts > provider preflight and schemas > checks account, agent, route, live credits, price and budget quote 18ms
+   → Provider response did not match the required schema. Inspect provider state before retrying.
+ ✓ test/providers.test.ts > provider preflight and schemas > blocks unsafe or unknown account before spending 2ms
+ ✓ test/providers.test.ts > provider preflight and schemas > blocks unsafe or unknown agent before spending 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > blocks unsafe or unknown sms before spending 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > blocks unsafe or unknown credits before spending 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > blocks unsafe or unknown price before spending 2ms
+ ✓ test/providers.test.ts > provider preflight and schemas > blocks unsafe or unknown stale before spending 0ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: destination 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: origin 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: missing_origin 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: empty_prices 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: multiple_prices 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: missing_price 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: negative 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: nonfinite 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: missing_prefixes 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > fails loud on missing dispatch telemetry 1ms
+ × test/providers.test.ts > provider preflight and schemas > rejects an unsafe voice_fallback_url independently 3ms
+   → expected Error: Provider response did not match th… { …(3) } to match object { code: 'ROUTING_UNSAFE' }
+(2 matching properties omitted from actual)
+ × test/providers.test.ts > provider preflight and schemas > rejects an unsafe sms_fallback_url independently 1ms
+   → expected Error: Provider response did not match th… { …(3) } to match object { code: 'ROUTING_UNSAFE' }
+(2 matching properties omitted from actual)
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/providers.test.ts > provider preflight and schemas > checks account, agent, route, live credits, price and budget quote
+Error: Provider response did not match the required schema. Inspect provider state before retrying.
+ ❯ LiveProviders.request src/providers.ts:58:19
+     56|     if (!schema) return res;
+     57|     try { return schema.parse(await res.json()); }
+     58|     catch { throw new CallError("PROVIDER_SCHEMA", "Provider response …
+       |                   ^
+     59|   }
+     60|   private eleven<S extends z.ZodType>(path: string, schema: S, body?: …
+ ❯ LiveProviders.preflight src/providers.ts:70:77
+ ❯ test/providers.test.ts:30:53
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+Serialized Error: { code: 'PROVIDER_SCHEMA', retryable: false, status: 502 }
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  test/providers.test.ts > provider preflight and schemas > rejects an unsafe voice_fallback_url independently
+ FAIL  test/providers.test.ts > provider preflight and schemas > rejects an unsafe sms_fallback_url independently
+AssertionError: expected Error: Provider response did not match th… { …(3) } to match object { code: 'ROUTING_UNSAFE' }
+(2 matching properties omitted from actual)
+
+- Expected
++ Received
+
+- {
+-   "code": "ROUTING_UNSAFE",
++ CallError {
++   "code": "PROVIDER_SCHEMA",
+  }
+
+ ❯ test/providers.test.ts:67:56
+     65|     const { p, responses } = await setup();
+     66|     (responses[`/2010-04-01/Accounts/${cfg.twilioAccountSid}/IncomingP…
+     67|     await expect(p.preflight(cfg.selfNumber, 180, NOW)).rejects.toMatc…
+       |                                                        ^
+     68|   });
+     69| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 16 passed (19)
+   Start at  10:47:22
+   Duration  161ms (transform 28ms, setup 0ms, import 68ms, tests 35ms, environment 0ms)
+

@@ -1,0 +1,31 @@
+from pathlib import Path
+import subprocess, re, json
+p=Path(__file__).parent
+root=Path('/Users/tonygwu/Code/phone-calls/repo-0')
+evidence=root/'docs/evidence'
+current=(p/'providers.current.ts').read_text()
+variants={
+ 'baseline':(p/'providers.baseline.ts').read_text(),
+ 'green':current,
+ 'omit_caller_filter':current.replace('?OriginationNumber=${encodeURIComponent(c.fromNumber)}', ''),
+ 'omit_destination_identity':current.replace(' && pricing.destination_number === to', ''),
+ 'omit_caller_identity':current.replace(' && pricing.origination_number === c.fromNumber', ''),
+ 'allow_missing_caller':current.replace('origination_number: z.string()', 'origination_number: z.string().optional()').replace('pricing.origination_number === c.fromNumber', '(pricing.origination_number === undefined || pricing.origination_number === c.fromNumber)'),
+ 'allow_multiple_prices':current.replace(' })).length(1)', ' })).min(1)'),
+ 'invent_missing_price':current.replace('current_price: z.string(), origination_prefixes', 'current_price: z.string().optional(), origination_prefixes').replace('numeric(pricing.outbound_call_prices[0].current_price,', 'numeric(pricing.outbound_call_prices[0].current_price ?? "0",'),
+ 'allow_negative_price':current.replace('Number.isFinite(twilioPerMinuteUsd) && twilioPerMinuteUsd >= 0', 'Number.isFinite(twilioPerMinuteUsd)'),
+ 'allow_missing_prefixes':current.replace('origination_prefixes: z.array(z.string().min(1)).min(1)', 'origination_prefixes: z.array(z.string().min(1)).min(1).optional()'),
+}
+summary=[]
+for name, source in variants.items():
+ assert name=='green' or source!=current, name
+ (p/'src/providers.ts').write_text(source)
+ result=subprocess.run(['npm','test','--','--config','review.vitest.config.ts'],cwd=p,text=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+ (evidence/f'destination-price-review-{name}.txt').write_text(result.stdout)
+ failures=re.findall(r'^\s*[×✗]\s+([^\n]+)',result.stdout,re.M)
+ counts=re.findall(r'^\s*(?:Test Files|Tests|Errors)\s+[^\n]+',result.stdout,re.M)
+ row={'variant':name,'exit':result.returncode,'counts':counts,'failed_tests':failures}
+ summary.append(row)
+ print(json.dumps(row),flush=True)
+(p/'src/providers.ts').write_text(current)
+(evidence/'destination-price-review-mutations.json').write_text(json.dumps(summary,indent=2)+'\n')

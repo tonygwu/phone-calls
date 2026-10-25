@@ -1,0 +1,40 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How calls survive disconnects — agent sessions</title>
+<style>body{margin:0;background:#f8fafc;color:#172033;font:18px/1.5 system-ui,sans-serif}main{max-width:1240px;margin:auto;padding:32px}h1{font-size:30px}h2{font-size:26px;margin:0}h3{font-size:20px;margin:0 0 12px}p{margin:10px 0}article{margin:32px 0 48px;overflow-wrap:anywhere}.layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr) minmax(0,1fr);gap:20px}section{background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:24px;min-width:0}header{margin-bottom:20px}.wide{grid-column:1/-1}.loop{background:#fff5f5;border-color:#dc2626}.step{padding:12px;border:1px solid #dc2626;border-radius:6px;text-align:center;background:white}.arrow{text-align:center;font-size:24px}.eval{border-top:4px solid #64748b}.eval-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 28px}.meta{color:#475569}li{margin:10px 0}a{color:#1d4ed8}.sequence{font-weight:600} @media(max-width:850px){.layout,.eval-grid{display:block}section{margin-bottom:16px}main{padding:16px}}</style></head><body><main>
+<h1>How calls survive disconnects — agent sessions</h1>
+<p>Read input first, then skills → agent loop ↔ tools, then the result. Evaluation is a separate test of the session. These are explanatory groups, not extra services.</p>
+<article data-agent="voice-agent" id="voice-agent"><header><h2>ElevenLabs telephone agent [voice-agent]</h2>
+<p><strong>Status:</strong> existing · verified</p>
+<p>Uses supplied facts and authority to conduct one conversation; behavior requires checking against evidence.</p></header><div class="layout">
+<section class="wide" data-group="input"><h3>One invocation — what goes in?</h3>
+<p><strong>Harness:</strong> ElevenLabs Agents with a dedicated Twilio outbound number</p>
+<p><strong>Input mode:</strong> single</p>
+<p><strong>Work unit:</strong> One telephone conversation</p>
+<p><strong>Additional context:</strong> Only supplied facts; no cross-call history</p>
+<p>Data shapes: <a href="../data/recovery.html#initiation">Fresh provider conversation [initiation]</a></p>
+<p><strong>Model selection:</strong> gpt-4.1-mini; fallback disabled</p>
+<p><strong>Objective / prompt:</strong> src/agent.ts AGENT_PROMPT</p>
+</section><section data-group="skills"><h3>Available skills</h3><p class="meta">Instruction packages for this session. Note which load at start or when relevant.</p>
+<p>None declared for this session.</p>
+</section>
+<section class="loop" data-group="loop"><h3>Agent loop</h3>
+<div class="step">Read input and observations</div><div class="arrow">↓</div><div class="step">Choose the next action</div><div class="arrow">↔</div><div class="step">Use a tool when needed<br>Read its result and reconsider ↺</div>
+<p class="meta">Follow the session’s required actions and stop rules. This loop is notation, not a recorded trajectory.</p>
+<p><strong>Finish / stop:</strong> Success, missing authority, or duration limit; independent Twilio watchdog</p>
+</section><section data-group="tools"><h3>Available tools</h3><p class="meta">Callable actions and their scope. Availability does not mean every tool is called.</p>
+<ul><li>end_call: hang up</li><li>voicemail_detection: handle an answering machine</li><li>play_keypad_touch_tone: navigate menus</li><li>skip_turn: wait through speech or hold</li></ul>
+</section><section class="wide" data-group="output"><h3>Result leaving the session</h3>
+<p>Data shapes: <a href="../data/recovery.html#provider-conversation">Raw ElevenLabs conversation [provider-conversation]</a></p>
+<p>Follow the main flow for what the host does next; a returned decision alone does not imply a side effect.</p></section>
+<section class="wide eval" data-group="eval"><h3>How this agent is evaluated</h3>
+<p><strong>Suite status:</strong> existing</p>
+<p class="sequence">Fixtures → session runner → captured result / trace → checks → measures</p><div class="eval-grid">
+<p><strong>Fixtures and tool environment:</strong> 62 local orchestration tests; fictional conversational cases across prompt revisions; one real mailbox acceptance</p>
+<p><strong>Execution under test:</strong> Local tests passed. Eleven text simulations: six manual passes, five failures retained. One real voicemail confirmed by owner.</p>
+<p><strong>Oracle / checks:</strong> Full transcript and tool inspection in addition to provider judge; physical keypad and acoustic hold transport remain unverified.</p>
+<p><strong>Measures:</strong> Attempted, succeeded, failed with failure taxonomy</p>
+</div><p class="meta">This test path is separate from runtime validation. A proposed or existing suite is not a measured success claim.</p></section></div>
+<p><strong>Sources:</strong> src/agent.ts; private/ordinary-rollout/setup-before.json — Authenticated production readiness reports exact configured providers and no active call.; docs/evidence/conversation-simulations.json; docs/evidence/conversation-transcripts.json; private/ordinary-rollout/after.raw.json — Live main-branch prompt readback matches current source and approved complete-config fingerprint.</p>
+</article>
+<p class="meta">Key: red marks the agent loop; neutral groups organize explanations. Status words state lifecycle. Missing information stays unknown. Skills do not grant tools or permissions.</p></main></body></html>

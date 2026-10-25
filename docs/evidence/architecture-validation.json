@@ -1,0 +1,47 @@
+{
+  "errors": [],
+  "summary": {
+    "architecture": {
+      "id": "phone-calls",
+      "mode": "current",
+      "name": "Private telephone assistant",
+      "record": "architecture",
+      "schema": "1.0",
+      "scope": "Locally implemented Worker and provider integration; cloud resources and live evaluation pending."
+    },
+    "component_kinds": {
+      "agent": 1,
+      "client": 1,
+      "datastore": 1,
+      "deterministic": 1,
+      "external": 2,
+      "scheduler": 1,
+      "worker": 1
+    },
+    "confidences": {
+      "proposed": 7,
+      "verified": 29
+    },
+    "flow_transports": {
+      "async": 2,
+      "scheduled": 1,
+      "sync": 11
+    },
+    "lifecycles": {
+      "existing": 27,
+      "proposed": 7
+    },
+    "records": {
+      "architecture": 1,
+      "boundary": 1,
+      "component": 8,
+      "entity": 11,
+      "flow": 14,
+      "risk": 2,
+      "view": 3
+    },
+    "schema": "1.0"
+  },
+  "valid": true,
+  "warnings": []
+}

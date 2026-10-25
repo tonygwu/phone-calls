@@ -1,0 +1,40 @@
+specification {
+  element deterministic { style { shape rectangle color blue } }
+  element bounded_llm { style { shape rectangle color indigo } }
+  element agent { style { shape rectangle color red } }
+  element human { style { shape person color gray } }
+  element client { style { shape browser color blue } }
+  element external { style { shape rectangle color amber } }
+  element datastore { style { shape storage color green } }
+  element queue { style { shape queue color amber } }
+  element scheduler { style { shape rectangle color amber } }
+  element worker { style { shape rectangle color blue } }
+  relationship sync { line solid }
+  relationship async { line dotted }
+}
+model {
+  voice_agent = agent 'ElevenLabs telephone agent' 'Uses supplied facts and authority to conduct one conversation; behavior requires checking against evidence.' {
+    metadata {
+      lifecycle 'existing'
+      confidence 'verified'
+      source 'src/agent.ts'
+      source 'private/ordinary-rollout/setup-before.json'
+      source 'docs/evidence/conversation-simulations.json'
+      source 'docs/evidence/conversation-transcripts.json'
+      source 'private/ordinary-rollout/after.raw.json'
+      model 'gpt-4.1-mini; fallback disabled'
+      prompt 'src/agent.ts AGENT_PROMPT'
+      tool 'end_call: hang up'
+      tool 'voicemail_detection: handle an answering machine'
+      tool 'play_keypad_touch_tone: navigate menus'
+      tool 'skip_turn: wait through speech or hold'
+    }
+  }
+}
+views {
+  view agent_session {
+    title 'What one telephone conversation can know and do'
+    include *
+    autoLayout LeftRight
+  }
+}

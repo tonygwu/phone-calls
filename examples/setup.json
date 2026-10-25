@@ -1,0 +1,27 @@
+{
+  "publicOrigin": "https://calls.example.com",
+  "accessIssuer": "https://your-team.cloudflareaccess.com",
+  "ownerEmail": "owner@example.com",
+  "ownerSubject": "REPLACE_WITH_VERIFIED_ACCESS_USER_SUBJECT",
+  "ownerName": "Example Owner",
+  "selfNumber": "+12025550123",
+  "callbackNumber": "+12025550123",
+  "twilioAccountSid": "AC00000000000000000000000000000000",
+  "voiceId": "JBFqnCBsd6RMkjVDRZzb",
+  "testOnly": true,
+  "voicemailAcceptance": null,
+  "budget": {
+    "monthlyUsd": 10,
+    "fixedMonthlyUsd": null,
+    "additionalPerMinuteUsd": null,
+    "additionalPerCallUsd": null,
+    "elevenCreditsPerMinute": null,
+    "verifiedAt": null,
+    "expiresAt": null,
+    "source": "Replace null values with verified rates, included credits, taxes and incremental hosting costs."
+  },
+  "selectedNumber": "+14155550123",
+  "quotedNumberMonthlyUsd": null,
+  "cloudflareAccountId": "00000000000000000000000000000000",
+  "oauthRedirectUris": ["https://chatgpt.com/connector_platform/oauth/callback"]
+}

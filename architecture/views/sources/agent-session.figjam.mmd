@@ -1,0 +1,22 @@
+flowchart LR
+  subgraph viewFrame["What one telephone conversation can know and do"]
+  direction LR
+  viewGuide["What can the voice agent do?
+A fresh brief supplies facts and authority. The configured model can wait, select menu digits, handle voicemail and hang up. Corrected text examples and one real voicemail were accepted; physical keypad delivery and acoustic hold timing remain unverified."]
+  style viewGuide fill:#ffffff,stroke:#9ca3af,color:#111827
+  n766f6963652d6167656e74{{"ElevenLabs telephone agent
+Agent - chooses its next action | EXISTING
+Uses supplied facts and authority to conduct one conversation; behavior requires checking against evidence."}}
+  end
+  style viewFrame fill:#ffffff,stroke:#cbd5e1
+  classDef agent fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#111827
+  class n766f6963652d6167656e74 agent
+  subgraph legend["Key"]
+    keyagent{{"Agent - chooses its next action"}}
+    class keyagent agent
+    keylines["Solid arrow: synchronous call or data transfer. Dotted arrow: asynchronous, scheduled, or agent launch."]
+    keystatus["Status words describe implementation: EXISTING. Color describes role, not status."]
+  end
+  style legend fill:#ffffff,stroke:#cbd5e1
+  style keylines fill:#ffffff,stroke:#9ca3af,color:#111827
+  style keystatus fill:#ffffff,stroke:#9ca3af,color:#111827

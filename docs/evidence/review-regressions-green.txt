@@ -1,0 +1,17 @@
+
+> phone-calls-mcp@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.12 <project>
+
+ ✓ test/providers.test.ts (10 tests) 12ms
+ ✓ test/mcp.test.ts (1 test) 15ms
+ ✓ test/engine.test.ts (30 tests) 85ms
+ ✓ test/security.test.ts (6 tests) 39ms
+
+ Test Files  4 passed (4)
+      Tests  47 passed (47)
+   Start at  22:52:49
+   Duration  1.13s (transform 892ms, setup 0ms, import 3.03s, tests 151ms, environment 0ms)
+
