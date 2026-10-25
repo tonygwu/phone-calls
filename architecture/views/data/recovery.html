@@ -1,0 +1,98 @@
+<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How calls survive disconnects — data examples and schemas</title>
+<style>body{margin:0;background:#f8fafc;color:#172033;font:18px/1.55 system-ui,sans-serif}main{max-width:1120px;margin:auto;padding:32px}h1{font-size:30px}h2{font-size:24px;margin:0}h3{font-size:18px}section{background:white;border:1px solid #cbd5e1;border-radius:10px;margin:24px 0;padding:24px;overflow-wrap:anywhere}.columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f5f9;padding:16px;border-radius:6px;font:16px/1.6 ui-monospace,monospace}li{margin:8px 0}a{color:#1d4ed8}.meta{color:#475569}@media(max-width:720px){.columns{display:block}main{padding:16px}}</style>
+<main><h1>How calls survive disconnects — data examples and schemas</h1>
+<p>Match the bracketed data IDs to the diagram arrows and stores. These cards explain records, not extra running components. Relationships below describe data, not execution order.</p>
+<section id="calls"><h2>[calls] Call tasks</h2>
+<p class="meta">table · existing · verified</p>
+<p>Store: SQLite storage [storage] · Table: calls</p>
+<h3>Where this data travels</h3><ul><li>Durable call coordinator -&gt; SQLite storage: Persist before the provider request [persist]</li></ul>
+<div class="columns"><div><h3>Fields and constraints</h3>
+<ul><li>id TEXT PRIMARY KEY</li><li>request_hash TEXT UNIQUE NOT NULL</li><li>created INTEGER NOT NULL; UTC acceptance milliseconds</li><li>expires INTEGER NOT NULL; created plus 30 days</li><li>month TEXT NOT NULL; UTC month</li><li>active INTEGER NOT NULL</li><li>next_check INTEGER NOT NULL</li><li>allowance INTEGER NOT NULL; USD microdollars</li><li>body TEXT NOT NULL; Task JSON</li></ul>
+</div><div>
+<h3>Example</h3><p>No example supplied; use the schema at left.</p>
+</div></div>
+<p class="meta">Schema evidence: src/store.ts</p>
+</section>
+<section id="expired-requests"><h2>[expired-requests] Used request hashes</h2>
+<p class="meta">table · existing · verified</p>
+<p>Store: SQLite storage [storage] · Table: expired_requests</p>
+<div class="columns"><div><h3>Fields and constraints</h3>
+<ul><li>request_hash TEXT PRIMARY KEY; SHA-256 only</li></ul>
+</div><div>
+<h3>Example</h3><p>No example supplied; use the schema at left.</p>
+</div></div>
+<p class="meta">Schema evidence: src/store.ts</p>
+</section>
+<section id="monthly-charges"><h2>[monthly-charges] Aggregate accounted costs and reservations</h2>
+<p class="meta">table · existing · verified</p>
+<p>Store: SQLite storage [storage] · Table: monthly_charges</p>
+<div class="columns"><div><h3>Fields and constraints</h3>
+<ul><li>month TEXT PRIMARY KEY</li><li>micros INTEGER NOT NULL</li></ul>
+</div><div>
+<h3>Example</h3><p>No example supplied; use the schema at left.</p>
+</div></div>
+<p class="meta">Schema evidence: src/store.ts</p>
+</section>
+<section id="safety-blocks"><h2>[safety-blocks] Unresolved-call lock</h2>
+<p class="meta">table · existing · verified</p>
+<p>Store: SQLite storage [storage] · Table: safety_blocks</p>
+<div class="columns"><div><h3>Fields and constraints</h3>
+<ul><li>reason TEXT PRIMARY KEY; no private call content</li></ul>
+</div><div>
+<h3>Example</h3><p>No example supplied; use the schema at left.</p>
+</div></div>
+<p class="meta">Schema evidence: src/store.ts</p>
+</section>
+<section id="initiation"><h2>[initiation] Fresh provider conversation</h2>
+<p class="meta">json · existing · verified</p>
+<h3>Where this data travels</h3><ul><li>Durable call coordinator -&gt; ElevenLabs telephone agent: Initiate once with fresh context [start]</li><li>Input to ElevenLabs telephone agent [voice-agent]</li></ul>
+<div class="columns"><div><h3>Fields and constraints</h3>
+<ul><li>agent_id, agent_phone_number_id, to_number: configured identities and validated destination</li><li>conversation_initiation_client_data.user_id: durable call UUID</li><li>conversation_initiation_client_data.dynamic_variables: task_type, objective, context, owner_name, callback_number, voicemail_action/message</li><li>success_criteria and all constraints arrays are JSON-encoded strings inside dynamic_variables</li><li>conversation_config_override.conversation.max_duration_seconds: approved duration</li><li>call_recording_enabled: false</li><li>telephony_call_config.ringing_timeout_secs: 60</li></ul>
+</div><div>
+<h3>Example</h3><p>No example supplied; use the schema at left.</p>
+</div></div>
+<p class="meta">Schema evidence: src/agent.ts</p>
+</section>
+<section id="provider-conversation"><h2>[provider-conversation] Raw ElevenLabs conversation</h2>
+<p class="meta">json · existing · verified</p>
+<h3>Where this data travels</h3><ul><li>Durable call coordinator -&gt; ElevenLabs telephone agent: Read conversation; returns raw provider evidence [evidence]</li><li>Output from ElevenLabs telephone agent [voice-agent]</li></ul>
+<div class="columns"><div><h3>Fields and constraints</h3>
+<ul><li>agent_id, conversation_id, user_id: identities</li><li>status: initiated, in-progress, processing, done or failed</li><li>metadata: start_time_unix_secs, call_duration_secs, cost_fiat, Twilio phone identity</li><li>transcript: timed role/message/tool turns</li><li>analysis: summary and collected outcome/confirmation/unresolved values</li><li>has_audio: recording availability</li></ul>
+</div><div>
+<h3>Example</h3><p>No example supplied; use the schema at left.</p>
+</div></div>
+<p class="meta">Schema evidence: src/providers.ts</p>
+</section>
+<section id="provider-call"><h2>[provider-call] Raw Twilio call state</h2>
+<p class="meta">json · existing · verified</p>
+<h3>Where this data travels</h3><ul><li>Durable call coordinator -&gt; Twilio telephone connection: Read telephone status and charge [read-call]</li></ul>
+<div class="columns"><div><h3>Fields and constraints</h3>
+<ul><li>sid, account_sid, from, to: checked identities</li><li>status: telephone status</li><li>price and price_unit: nullable billed amount and currency</li><li>start_time and duration: nullable provider values</li></ul>
+</div><div>
+<h3>Example</h3><p>No example supplied; use the schema at left.</p>
+</div></div>
+<p class="meta">Schema evidence: src/providers.ts</p>
+</section>
+<section id="admission"><h2>[admission] Provider admission facts</h2>
+<p class="meta">json · existing · verified</p>
+<h3>Where this data travels</h3><ul><li>Durable call coordinator -&gt; ElevenLabs telephone agent: Check agent, number and credits before admission [admit-eleven]</li><li>Durable call coordinator -&gt; Twilio telephone connection: Check account, routing, balance and current rate before admission [admit-twilio]</li></ul>
+<div class="columns"><div><h3>Fields and constraints</h3>
+<ul><li>ElevenLabs reads: complete agent configuration, phone assignment, subscription credits</li><li>Twilio reads: account identity/type, number primary/fallback routing, USD balance, destination USD rate</li><li>Seven concurrent read responses; invalid or unavailable facts reject admission before a task exists</li></ul>
+</div><div>
+<h3>Example</h3><p>No example supplied; use the schema at left.</p>
+</div></div>
+<p class="meta">Schema evidence: src/providers.ts</p>
+</section>
+<section id="observation-counter"><h2>[observation-counter] Durable provider read ordering</h2>
+<p class="meta">table · existing · verified</p>
+<p>Store: SQLite storage [storage] · Table: observation_counter</p>
+<div class="columns"><div><h3>Fields and constraints</h3>
+<ul><li>id INTEGER PRIMARY KEY CHECK(id=1)</li><li>sequence INTEGER NOT NULL; monotonically increasing observation number, no call content</li></ul>
+</div><div>
+<h3>Example</h3><p>No example supplied; use the schema at left.</p>
+</div></div>
+<p class="meta">Schema evidence: src/store.ts</p>
+</section>
+</main></html>

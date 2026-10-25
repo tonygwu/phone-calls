@@ -1,0 +1,16 @@
+
+> phone-calls-mcp@0.1.0 build
+> cf build
+
+├  Build
+│  Delegating to Vite
+vite v8.3.5 building ssr environment for production...
+transforming...
+✓ 265 modules transformed.
+rendering chunks...
+computing gzip size...
+.cloudflare/output/v0/workers/default/bundle/.vite/manifest.json      0.15 kB │ gzip:   0.11 kB
+.cloudflare/output/v0/workers/default/bundle/index.js             1,147.72 kB │ gzip: 265.76 kB │ map: 2,101.72 kB
+
+✓ built in 49ms
+◆  Build complete

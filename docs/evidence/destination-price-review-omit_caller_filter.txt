@@ -1,0 +1,55 @@
+
+> phone-calls-mcp@0.1.0 test
+> vitest run --config review.vitest.config.ts
+
+
+ RUN  v4.1.12 /private/tmp/destination-price-review-n2y0go51
+
+ × test/providers.test.ts > provider preflight and schemas > checks account, agent, route, live credits, price and budget quote 19ms
+   → expected null to be '+14155550123' // Object.is equality
+ ✓ test/providers.test.ts > provider preflight and schemas > blocks unsafe or unknown account before spending 2ms
+ ✓ test/providers.test.ts > provider preflight and schemas > blocks unsafe or unknown agent before spending 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > blocks unsafe or unknown sms before spending 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > blocks unsafe or unknown credits before spending 2ms
+ ✓ test/providers.test.ts > provider preflight and schemas > blocks unsafe or unknown price before spending 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > blocks unsafe or unknown stale before spending 0ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: destination 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: origin 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: missing_origin 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: empty_prices 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: multiple_prices 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: missing_price 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: negative 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: nonfinite 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: missing_prefixes 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > fails loud on missing dispatch telemetry 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects an unsafe voice_fallback_url independently 1ms
+ ✓ test/providers.test.ts > provider preflight and schemas > rejects an unsafe sms_fallback_url independently 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/providers.test.ts > provider preflight and schemas > checks account, agent, route, live credits, price and budget quote
+AssertionError: expected null to be '+14155550123' // Object.is equality
+
+- Expected:
+"+14155550123"
+
++ Received:
+null
+
+ ❯ test/providers.test.ts:34:60
+     32|     const urls = vi.mocked(fetcher).mock.calls.map(([url]) => new URL(…
+     33|     const pricing = urls.find(url => url.hostname === "pricing.twilio.…
+     34|     expect(pricing?.searchParams.get("OriginationNumber")).toBe(cfg.fr…
+       |                                                            ^
+     35|   });
+     36|   it.each(["account", "agent", "sms", "credits", "price", "stale"])("b…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 18 passed (19)
+   Start at  10:47:23
+   Duration  158ms (transform 28ms, setup 0ms, import 69ms, tests 34ms, environment 0ms)
+

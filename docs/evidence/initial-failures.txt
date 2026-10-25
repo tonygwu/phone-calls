@@ -1,0 +1,80 @@
+
+> phone-calls-mcp@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.11 <project>
+
+ ❯ test/engine.test.ts (24 tests | 2 failed) 68ms
+     ✓ rejects Canadian numbers, missing essentials and long reminders 11ms
+     ✓ allows only the test destination before acceptance 2ms
+     ✓ reserves budget before dispatch and returns immediately 3ms
+     ✓ rejects exhaustion and unknown pricing without dialing 3ms
+     ✓ deduplicates retries and rejects changed intent 2ms
+     ✓ resolves concurrent starts to a single active call 2ms
+     ✓ never redials an ambiguous timeout, including after restart 2ms
+     ✓ recovers a crash after the dispatch marker without sending 1ms
+     ✓ merges callbacks before the outbound response and handles duplicate events 2ms
+     ✓ rejects callback identity mismatches 2ms
+     ✓ does not infer a successful task from a completed call 2ms
+     ✓ preserves uncertainty if a success response has no provider IDs 2ms
+     ✓ cancels pending tasks without ever contacting a dial endpoint 2ms
+     ✓ does not claim termination from a successful update alone 2ms
+     ✓ persistent watchdog terminates at the duration plus ringing deadline 1ms
+     ✓ retains cancellation intent while dispatch identity is unknown 2ms
+     ✓ purges content at 30 days and rejects ancient retry keys 1ms
+     × purges unresolved calls too, while blocking new calls for reconciliation 14ms
+     × does not reduce watchdog retry frequency after a day of provider failures 3ms
+     ✓ preserves voicemail_attempted with explicit evidence limits 2ms
+     ✓ preserves delivered_to_person with explicit evidence limits 1ms
+     ✓ preserves needs_user_input with explicit evidence limits 2ms
+     ✓ preserves partial with explicit evidence limits 2ms
+     ✓ sends fresh context as initiation data without changing the saved agent 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/engine.test.ts > retention, pagination and conversation outcomes > purges unresolved calls too, while blocking new calls for reconciliation
+Error: An unresolved call reached retention expiry. Operator reconciliation is required.
+ ❯ SqlStore.purge src/store.ts:57:45
+     55|     for (const row of this.sql.exec<{ body: string; allowance: number …
+     56|       const t = JSON.parse(row.body) as Task;
+     57|       if (!terminal.has(t.telephone)) throw new CallError("RETENTION_A…
+       |                                             ^
+     58|       this.sql.exec("INSERT OR IGNORE INTO expired_requests VALUES (?)…
+     59|       this.sql.exec("INSERT INTO monthly_charges VALUES (?, ?) ON CONF…
+ ❯ CallEngine.tick src/engine.ts:53:16
+ ❯ test/engine.test.ts:118:13
+ ❯ test/engine.test.ts:15:5
+ ❯ maybeHandleRunRequest <project>/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:157:18
+ ❯ DurableObject.Wrapper.fetch <project>/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:552:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  test/engine.test.ts > retention, pagination and conversation outcomes > does not reduce watchdog retry frequency after a day of provider failures
+AssertionError: expected 1792994400001 to be 1792990815001 // Object.is equality
+
+- Expected
++ Received
+
+- 1792990815001
++ 1792994400001
+
+ ❯ test/engine.test.ts:123:37
+    121|   it("does not reduce watchdog retry frequency after a day of provider…
+    122|     p.dispatch.mockRejectedValueOnce(new Error("timeout")); const id =…
+    123|     expect(e.require(id).nextCheck).toBe(NOW + DAY + 1 + 15000);
+       |                                     ^
+    124|   }));
+    125|   it.each(["voicemail_attempted", "delivered_to_person", "needs_user_i…
+ ❯ test/engine.test.ts:15:5
+ ❯ maybeHandleRunRequest <project>/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:157:18
+ ❯ DurableObject.Wrapper.fetch <project>/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:552:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 22 passed (24)
+   Start at  22:26:17
+   Duration  1.31s (transform 396ms, setup 0ms, import 1.02s, tests 68ms, environment 1ms)
+

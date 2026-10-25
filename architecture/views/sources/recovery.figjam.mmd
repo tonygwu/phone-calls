@@ -1,0 +1,59 @@
+flowchart LR
+  subgraph viewFrame["How calls survive disconnects"]
+  direction LR
+  viewGuide["How are redials, overruns and retained private content prevented?
+Saved dispatch state prevents redial. Active-call checks take priority over old analysis or billing work; termination requests can repeat until confirmed. Ordered provider observations cannot regress final results. At 30 days content expires and unresolved calls leave a content-free block."]
+  style viewGuide fill:#ffffff,stroke:#9ca3af,color:#111827
+  n6c6564676572["Durable call coordinator
+Program step - fixed rules | EXISTING
+Admits one call, reserves budget and reconciles evidence."]
+  n73746f72616765[("SQLite storage
+Saved data | EXISTING | [storage]
+Persists tasks before dialing and deletes content after 30 days.")]
+  n616c61726d["Persistent watchdog
+Schedule - starts work at a set time | EXISTING
+Resumes work, enforces deadlines and purges expired content."]
+  n7477696c696f{{"Twilio telephone connection
+External software or service | EXISTING
+Provides the dedicated number, call status and forced hangup."}}
+  n766f6963652d6167656e74{{"ElevenLabs telephone agent
+Agent - chooses its next action | EXISTING
+Uses supplied facts and authority to conduct one conversation; behavior requires checking against evidence."}}
+  n6c6564676572 -->|"Persist before the provider request | Call tasks [calls]"| n73746f72616765
+  n616c61726d -.->|"Resume dispatch or enforce deadline"| n6c6564676572
+  n6c6564676572 -.->|"Save the earliest alarm"| n616c61726d
+  n6c6564676572 -->|"Initiate once with fresh context | Fresh provider conversation [initiation]"| n766f6963652d6167656e74
+  n6c6564676572 -->|"Read status and request termination"| n7477696c696f
+  n6c6564676572 -->|"Read conversation; returns raw provider evidence | Raw ElevenLabs conversation [provider-conversation]"| n766f6963652d6167656e74
+  n6c6564676572 -->|"Check agent, number and credits before admission | Provider admission facts [admission]"| n766f6963652d6167656e74
+  n6c6564676572 -->|"Check account, routing, balance and current rate before admission | Provider admission facts [admission]"| n7477696c696f
+  n6c6564676572 -->|"Read telephone status and charge | Raw Twilio call state [provider-call]"| n7477696c696f
+  end
+  style viewFrame fill:#ffffff,stroke:#cbd5e1
+  classDef agent fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#111827
+  classDef datastore fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#111827
+  classDef deterministic fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#111827
+  classDef external fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#111827
+  classDef scheduler fill:#fef9c3,stroke:#ca8a04,stroke-width:2px,color:#111827
+  class n6c6564676572 deterministic
+  class n73746f72616765 datastore
+  class n616c61726d scheduler
+  class n7477696c696f external
+  class n766f6963652d6167656e74 agent
+  subgraph legend["Key"]
+    keyagent{{"Agent - chooses its next action"}}
+    class keyagent agent
+    keydatastore[("Saved data")]
+    class keydatastore datastore
+    keydeterministic["Program step - fixed rules"]
+    class keydeterministic deterministic
+    keyexternal{{"External software or service"}}
+    class keyexternal external
+    keyscheduler["Schedule - starts work at a set time"]
+    class keyscheduler scheduler
+    keylines["Solid arrow: synchronous call or data transfer. Dotted arrow: asynchronous, scheduled, or agent launch."]
+    keystatus["Status words describe implementation: EXISTING. Color describes role, not status."]
+  end
+  style legend fill:#ffffff,stroke:#cbd5e1
+  style keylines fill:#ffffff,stroke:#9ca3af,color:#111827
+  style keystatus fill:#ffffff,stroke:#9ca3af,color:#111827

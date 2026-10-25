@@ -1,0 +1,226 @@
+{
+  "view": "recovery",
+  "title": "How calls survive disconnects — data examples and schemas",
+  "cards": [
+    {
+      "record": "entity",
+      "id": "calls",
+      "name": "Call tasks",
+      "lifecycle": "existing",
+      "confidence": "verified",
+      "format": "table",
+      "table": "calls",
+      "store": "storage",
+      "fields": [
+        "id TEXT PRIMARY KEY",
+        "request_hash TEXT UNIQUE NOT NULL",
+        "created INTEGER NOT NULL; UTC acceptance milliseconds",
+        "expires INTEGER NOT NULL; created plus 30 days",
+        "month TEXT NOT NULL; UTC month",
+        "active INTEGER NOT NULL",
+        "next_check INTEGER NOT NULL",
+        "allowance INTEGER NOT NULL; USD microdollars",
+        "body TEXT NOT NULL; Task JSON"
+      ],
+      "evidence": [
+        {
+          "source": "src/store.ts",
+          "symbol": "SqlStore"
+        }
+      ],
+      "uses": [
+        "Durable call coordinator -> SQLite storage: Persist before the provider request [persist]"
+      ],
+      "store_name": "SQLite storage"
+    },
+    {
+      "record": "entity",
+      "id": "expired-requests",
+      "name": "Used request hashes",
+      "lifecycle": "existing",
+      "confidence": "verified",
+      "format": "table",
+      "table": "expired_requests",
+      "store": "storage",
+      "fields": [
+        "request_hash TEXT PRIMARY KEY; SHA-256 only"
+      ],
+      "evidence": [
+        {
+          "source": "src/store.ts",
+          "symbol": "SqlStore"
+        }
+      ],
+      "uses": [],
+      "store_name": "SQLite storage"
+    },
+    {
+      "record": "entity",
+      "id": "monthly-charges",
+      "name": "Aggregate accounted costs and reservations",
+      "lifecycle": "existing",
+      "confidence": "verified",
+      "format": "table",
+      "table": "monthly_charges",
+      "store": "storage",
+      "fields": [
+        "month TEXT PRIMARY KEY",
+        "micros INTEGER NOT NULL"
+      ],
+      "evidence": [
+        {
+          "source": "src/store.ts",
+          "symbol": "SqlStore"
+        }
+      ],
+      "uses": [],
+      "store_name": "SQLite storage"
+    },
+    {
+      "record": "entity",
+      "id": "safety-blocks",
+      "name": "Unresolved-call lock",
+      "lifecycle": "existing",
+      "confidence": "verified",
+      "format": "table",
+      "table": "safety_blocks",
+      "store": "storage",
+      "fields": [
+        "reason TEXT PRIMARY KEY; no private call content"
+      ],
+      "evidence": [
+        {
+          "source": "src/store.ts",
+          "symbol": "SqlStore"
+        }
+      ],
+      "uses": [],
+      "store_name": "SQLite storage"
+    },
+    {
+      "record": "entity",
+      "id": "initiation",
+      "name": "Fresh provider conversation",
+      "lifecycle": "existing",
+      "confidence": "verified",
+      "format": "json",
+      "fields": [
+        "agent_id, agent_phone_number_id, to_number: configured identities and validated destination",
+        "conversation_initiation_client_data.user_id: durable call UUID",
+        "conversation_initiation_client_data.dynamic_variables: task_type, objective, context, owner_name, callback_number, voicemail_action/message",
+        "success_criteria and all constraints arrays are JSON-encoded strings inside dynamic_variables",
+        "conversation_config_override.conversation.max_duration_seconds: approved duration",
+        "call_recording_enabled: false",
+        "telephony_call_config.ringing_timeout_secs: 60"
+      ],
+      "evidence": [
+        {
+          "source": "src/agent.ts",
+          "symbol": "dispatchBody"
+        }
+      ],
+      "uses": [
+        "Durable call coordinator -> ElevenLabs telephone agent: Initiate once with fresh context [start]",
+        "Input to ElevenLabs telephone agent [voice-agent]"
+      ]
+    },
+    {
+      "record": "entity",
+      "id": "provider-conversation",
+      "name": "Raw ElevenLabs conversation",
+      "lifecycle": "existing",
+      "confidence": "verified",
+      "format": "json",
+      "fields": [
+        "agent_id, conversation_id, user_id: identities",
+        "status: initiated, in-progress, processing, done or failed",
+        "metadata: start_time_unix_secs, call_duration_secs, cost_fiat, Twilio phone identity",
+        "transcript: timed role/message/tool turns",
+        "analysis: summary and collected outcome/confirmation/unresolved values",
+        "has_audio: recording availability"
+      ],
+      "evidence": [
+        {
+          "source": "src/providers.ts",
+          "symbol": "conversationSchema"
+        }
+      ],
+      "uses": [
+        "Durable call coordinator -> ElevenLabs telephone agent: Read conversation; returns raw provider evidence [evidence]",
+        "Output from ElevenLabs telephone agent [voice-agent]"
+      ]
+    },
+    {
+      "record": "entity",
+      "id": "provider-call",
+      "name": "Raw Twilio call state",
+      "lifecycle": "existing",
+      "confidence": "verified",
+      "format": "json",
+      "fields": [
+        "sid, account_sid, from, to: checked identities",
+        "status: telephone status",
+        "price and price_unit: nullable billed amount and currency",
+        "start_time and duration: nullable provider values"
+      ],
+      "evidence": [
+        {
+          "source": "src/providers.ts",
+          "symbol": "twilioCallSchema"
+        }
+      ],
+      "uses": [
+        "Durable call coordinator -> Twilio telephone connection: Read telephone status and charge [read-call]"
+      ]
+    },
+    {
+      "record": "entity",
+      "id": "admission",
+      "name": "Provider admission facts",
+      "lifecycle": "existing",
+      "confidence": "verified",
+      "format": "json",
+      "fields": [
+        "ElevenLabs reads: complete agent configuration, phone assignment, subscription credits",
+        "Twilio reads: account identity/type, number primary/fallback routing, USD balance, destination USD rate",
+        "Seven concurrent read responses; invalid or unavailable facts reject admission before a task exists"
+      ],
+      "evidence": [
+        {
+          "source": "src/providers.ts",
+          "symbol": "preflight"
+        }
+      ],
+      "uses": [
+        "Durable call coordinator -> ElevenLabs telephone agent: Check agent, number and credits before admission [admit-eleven]",
+        "Durable call coordinator -> Twilio telephone connection: Check account, routing, balance and current rate before admission [admit-twilio]"
+      ]
+    },
+    {
+      "record": "entity",
+      "id": "observation-counter",
+      "name": "Durable provider read ordering",
+      "lifecycle": "existing",
+      "confidence": "verified",
+      "format": "table",
+      "table": "observation_counter",
+      "store": "storage",
+      "fields": [
+        "id INTEGER PRIMARY KEY CHECK(id=1)",
+        "sequence INTEGER NOT NULL; monotonically increasing observation number, no call content"
+      ],
+      "evidence": [
+        {
+          "source": "src/store.ts",
+          "symbol": "nextObservation"
+        }
+      ],
+      "uses": [],
+      "store_name": "SQLite storage"
+    }
+  ],
+  "missing_stores": [],
+  "store_names": {
+    "storage": "SQLite storage"
+  }
+}

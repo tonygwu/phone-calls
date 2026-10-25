@@ -1,0 +1,153 @@
+{
+  "setup_rejections": {
+    "attempted": 1,
+    "succeeded": 0,
+    "failed": 1,
+    "failure_category": "unsupported_simulator_model",
+    "paid_simulation_started": false
+  },
+  "simulations": {
+    "attempted": 11,
+    "succeeded": 6,
+    "failed": 5
+  },
+  "failure_taxonomy": {
+    "caller_role_confusion": 2,
+    "simulation_cannot_execute_telephone_tones": 1,
+    "unrelated_assistance_after_reminder": 1,
+    "message_incomplete": 1
+  },
+  "provider_reported_simulation_usd": "0.289159749999999998",
+  "credits_used": 1439,
+  "cost_basis": "Provider fiat usage estimate, conservatively covered by $1 reserve within $3 fixed allowance. Included credits used; no overage enabled.",
+  "additional_real_phone_calls": 0,
+  "records": [
+    {
+      "case": "production-booking",
+      "provider_status": "passed",
+      "manual_verdict": "fail",
+      "failure_category": "caller_role_confusion",
+      "candidate_override": false,
+      "provider_reported_usd": "0.030048450000000001",
+      "credits_used": 149,
+      "provider_updated_at_unix": 1792958340,
+      "raw_sha256": "49f2fbd7027061a072dc73a3ef37d1ff940721541bc65cd32c8b106959cb333a"
+    },
+    {
+      "case": "first-revision-booking",
+      "provider_status": "failed",
+      "manual_verdict": "fail",
+      "failure_category": "caller_role_confusion",
+      "candidate_override": true,
+      "provider_reported_usd": "0.03146495",
+      "credits_used": 157,
+      "provider_updated_at_unix": 1792958853,
+      "raw_sha256": "4021602b861ffebc30f530a2ee22f9f352643450a9a3caf303c16e5ac1bb3d07"
+    },
+    {
+      "case": "booking-available",
+      "provider_status": "passed",
+      "manual_verdict": "pass",
+      "failure_category": null,
+      "candidate_override": true,
+      "provider_reported_usd": "0.02526975",
+      "credits_used": 126,
+      "provider_updated_at_unix": 1792959147,
+      "raw_sha256": "ebe7071c2eff17dab772323ef7e92fa9574800aa590b28b743bc99be28529e2e"
+    },
+    {
+      "case": "booking-alternative",
+      "provider_status": "passed",
+      "manual_verdict": "pass",
+      "failure_category": null,
+      "candidate_override": true,
+      "provider_reported_usd": "0.0313443",
+      "credits_used": 156,
+      "provider_updated_at_unix": 1792959220,
+      "raw_sha256": "16225c5ffe25bf04c795f8aadfa6594195085cd14c00a6129d05a5947bde445a"
+    },
+    {
+      "case": "support-menu",
+      "provider_status": "passed",
+      "manual_verdict": "fail",
+      "failure_category": "simulation_cannot_execute_telephone_tones",
+      "candidate_override": true,
+      "provider_reported_usd": "0.0383987",
+      "credits_used": 190,
+      "provider_updated_at_unix": 1792959258,
+      "raw_sha256": "d1dbc3fa8bb0391f8c48ce46c90fe865beca9f6b7e5c3654ef4909815b208e53"
+    },
+    {
+      "case": "support-human-handoff",
+      "provider_status": "passed",
+      "manual_verdict": "pass",
+      "failure_category": null,
+      "candidate_override": true,
+      "provider_reported_usd": "0.023880399999999998",
+      "credits_used": 118,
+      "provider_updated_at_unix": 1792959893,
+      "raw_sha256": "6fd031aed4228b6079019729465a87b92d822caafc13c49bc800ef0054ea7a14"
+    },
+    {
+      "case": "missing-authentication",
+      "provider_status": "passed",
+      "manual_verdict": "pass",
+      "failure_category": null,
+      "candidate_override": true,
+      "provider_reported_usd": "0.023934199999999999",
+      "credits_used": 120,
+      "provider_updated_at_unix": 1792960049,
+      "raw_sha256": "0869a36efad57a5f4068cd431afa26295ed60263201ef3295b286f546d69426c"
+    },
+    {
+      "case": "exceeds-authority",
+      "provider_status": "passed",
+      "manual_verdict": "pass",
+      "failure_category": null,
+      "candidate_override": true,
+      "provider_reported_usd": "0.024866699999999998",
+      "credits_used": 125,
+      "provider_updated_at_unix": 1792960085,
+      "raw_sha256": "c6ca6a0572d4e067fc1dfeff3e8f6217616a189cc7c550d692a4c55f4c1be3df"
+    },
+    {
+      "case": "live-person",
+      "provider_status": "passed",
+      "manual_verdict": "fail",
+      "failure_category": "unrelated_assistance_after_reminder",
+      "candidate_override": true,
+      "provider_reported_usd": "0.02299605",
+      "credits_used": 114,
+      "provider_updated_at_unix": 1792960136,
+      "raw_sha256": "49b967f2a66681b9eb4ba1646311adc7345b72e150bec6cd95a85c2e32e57cf4"
+    },
+    {
+      "case": "reminder-first-replay",
+      "provider_status": "passed",
+      "manual_verdict": "fail",
+      "failure_category": "message_incomplete",
+      "candidate_override": true,
+      "provider_reported_usd": "0.018054600000000001",
+      "credits_used": 89,
+      "provider_updated_at_unix": 1792960420,
+      "raw_sha256": "f4df9a95d9fc26105bb4c7a0d7a272e051d312949a54e6b4e24d3187c9c5b691"
+    },
+    {
+      "case": "live-person-complete-message",
+      "provider_status": "passed",
+      "manual_verdict": "pass",
+      "failure_category": null,
+      "candidate_override": true,
+      "provider_reported_usd": "0.018901650000000001",
+      "credits_used": 95,
+      "provider_updated_at_unix": 1792960639,
+      "raw_sha256": "025aebea7d5541f9452fc3d08dc826efdb8e7643cb395c918962fe089948f4b9"
+    }
+  ],
+  "limitations": [
+    "Single-run smoke tests across prompt revisions, not a reliability rate.",
+    "Final prompt adds disclosure after transfers and exact live-person reminder rules after the passing booking examples; bookings were not rerun on that final prompt.",
+    "Text simulation cannot execute telephone tones or verify audio, hold timing, or carrier delivery.",
+    "Post-call outcome extraction was not exercised by text simulations; missing authorization was verified in conversation only."
+  ]
+}

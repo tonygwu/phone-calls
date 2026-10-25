@@ -1,0 +1,36 @@
+<!doctype html><html lang="en"><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What one telephone conversation can know and do — data examples and schemas</title>
+<style>body{margin:0;background:#f8fafc;color:#172033;font:18px/1.55 system-ui,sans-serif}main{max-width:1120px;margin:auto;padding:32px}h1{font-size:30px}h2{font-size:24px;margin:0}h3{font-size:18px}section{background:white;border:1px solid #cbd5e1;border-radius:10px;margin:24px 0;padding:24px;overflow-wrap:anywhere}.columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f1f5f9;padding:16px;border-radius:6px;font:16px/1.6 ui-monospace,monospace}li{margin:8px 0}a{color:#1d4ed8}.meta{color:#475569}@media(max-width:720px){.columns{display:block}main{padding:16px}}</style>
+<main><h1>What one telephone conversation can know and do — data examples and schemas</h1>
+<p>Match the bracketed data IDs to the diagram arrows and stores. These cards explain records, not extra running components. Relationships below describe data, not execution order.</p>
+<section id="initiation"><h2>[initiation] Fresh provider conversation</h2>
+<p class="meta">json · existing · verified</p>
+<h3>Where this data travels</h3><ul><li>Input to ElevenLabs telephone agent [voice-agent]</li></ul>
+<div class="columns"><div><h3>Fields and constraints</h3>
+<ul><li>agent_id, agent_phone_number_id, to_number: configured identities and validated destination</li><li>conversation_initiation_client_data.user_id: durable call UUID</li><li>conversation_initiation_client_data.dynamic_variables: task_type, objective, context, owner_name, callback_number, voicemail_action/message</li><li>success_criteria and all constraints arrays are JSON-encoded strings inside dynamic_variables</li><li>conversation_config_override.conversation.max_duration_seconds: approved duration</li><li>call_recording_enabled: false</li><li>telephony_call_config.ringing_timeout_secs: 60</li></ul>
+</div><div>
+<h3>Example</h3><p>No example supplied; use the schema at left.</p>
+</div></div>
+<p class="meta">Schema evidence: src/agent.ts</p>
+</section>
+<section id="result"><h2>[result] Outcome and evidence</h2>
+<p class="meta">json · existing · verified</p>
+<div class="columns"><div><h3>Fields and constraints</h3>
+<ul><li>telephone_status: separate from objective</li><li>task_outcome: explicit uncertainty or assessed result</li><li>delivery_verified: false; receipt requires owner confirmation</li><li>cost: known charge or null, and allowance</li><li>transcript: optional paginated turns</li><li>recording_url: authenticated stream</li></ul>
+</div><div>
+<h3>Example</h3><p>No example supplied; use the schema at left.</p>
+</div></div>
+<p class="meta">Schema evidence: src/engine.ts</p>
+</section>
+<section id="provider-conversation"><h2>[provider-conversation] Raw ElevenLabs conversation</h2>
+<p class="meta">json · existing · verified</p>
+<h3>Where this data travels</h3><ul><li>Output from ElevenLabs telephone agent [voice-agent]</li></ul>
+<div class="columns"><div><h3>Fields and constraints</h3>
+<ul><li>agent_id, conversation_id, user_id: identities</li><li>status: initiated, in-progress, processing, done or failed</li><li>metadata: start_time_unix_secs, call_duration_secs, cost_fiat, Twilio phone identity</li><li>transcript: timed role/message/tool turns</li><li>analysis: summary and collected outcome/confirmation/unresolved values</li><li>has_audio: recording availability</li></ul>
+</div><div>
+<h3>Example</h3><p>No example supplied; use the schema at left.</p>
+</div></div>
+<p class="meta">Schema evidence: src/providers.ts</p>
+</section>
+</main></html>

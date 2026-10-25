@@ -1,0 +1,59 @@
+%%{init: {"flowchart": {"subGraphTitleMargin": {"top": 8, "bottom": 40}}}}%%
+flowchart LR
+  subgraph viewFrame["How one authorized call reaches an outcome"]
+  direction LR
+  viewGuide["What does the owner receive?<br/>The client first awaits provider checks of configuration, routing, credits, rates and funding. The coordinator then persists a pending call and alarm and returns an ID. A later alarm dials once. The three primary clients have authenticated. Additional Claude profiles need separate sign-in."]
+  style viewGuide fill:#ffffff,stroke:#9ca3af,color:#111827
+  n_client["MCP client<br/>Client application | EXISTING<br/>Primary Codex, ChatGPT and Claude Code submit authorized briefs and retrieve results. Three additional Claude profiles still need login."]
+  n_worker["Authenticated Worker<br/>Worker - processes assigned work | EXISTING<br/>Checks owner identity and provider signatures."]
+  n_ledger["Durable call coordinator<br/>Program step - fixed rules | EXISTING<br/>Admits one call, reserves budget and reconciles evidence."]
+  n_storage[("SQLite storage<br/>Saved data | EXISTING | [storage]<br/>Persists tasks before dialing and deletes content after 30 days.")]
+  n_access{{"Cloudflare Access login<br/>External software or service | EXISTING<br/>Supplies a signed owner assertion after OAuth login."}}
+  n_twilio{{"Twilio telephone connection<br/>External software or service | EXISTING<br/>Provides the dedicated number, call status and forced hangup."}}
+  n_voice_agent{{"ElevenLabs telephone agent<br/>Agent - chooses its next action | EXISTING<br/>Uses supplied facts and authority to conduct one conversation; behavior requires checking against evidence."}}
+  n_client -->|"Submit authorized task | Authorized brief [brief]"| n_worker
+  n_worker -->|"Route owner operation | Authorized brief [brief]"| n_ledger
+  n_ledger -->|"Persist before the provider request | Call tasks [calls]"| n_storage
+  n_ledger -->|"Initiate once with fresh context | Fresh provider conversation [initiation]"| n_voice_agent
+  n_ledger -->|"Read status and request termination"| n_twilio
+  n_voice_agent -.->|"Signed callback wakes reconciliation"| n_worker
+  n_ledger -->|"Read conversation; returns raw provider evidence | Raw ElevenLabs conversation [provider-conversation]"| n_voice_agent
+  n_worker -->|"Return separate status and outcome | Outcome and evidence [result]"| n_client
+  n_access -->|"Signed owner identity"| n_worker
+  n_ledger -->|"Check agent, number and credits before admission | Provider admission facts [admission]"| n_voice_agent
+  n_ledger -->|"Check account, routing, balance and current rate before admission | Provider admission facts [admission]"| n_twilio
+  n_ledger -->|"Read telephone status and charge | Raw Twilio call state [provider-call]"| n_twilio
+  end
+  style viewFrame fill:#ffffff,stroke:#cbd5e1
+  classDef agent fill:#fee2e2,stroke:#dc2626,stroke-width:2px,color:#111827
+  classDef client fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#111827
+  classDef datastore fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#111827
+  classDef deterministic fill:#dbeafe,stroke:#2563eb,stroke-width:2px,color:#111827
+  classDef external fill:#fef3c7,stroke:#d97706,stroke-width:2px,color:#111827
+  classDef worker fill:#cffafe,stroke:#0891b2,stroke-width:2px,color:#111827
+  class n_client client
+  class n_worker worker
+  class n_ledger deterministic
+  class n_storage datastore
+  class n_access external
+  class n_twilio external
+  class n_voice_agent agent
+  subgraph legend["Key"]
+    keyagent{{"Agent - chooses its next action"}}
+    class keyagent agent
+    keyclient["Client application"]
+    class keyclient client
+    keydatastore[("Saved data")]
+    class keydatastore datastore
+    keydeterministic["Program step - fixed rules"]
+    class keydeterministic deterministic
+    keyexternal{{"External software or service"}}
+    class keyexternal external
+    keyworker["Worker - processes assigned work"]
+    class keyworker worker
+    keylines["Solid arrow: synchronous call or data transfer. Dotted arrow: asynchronous, scheduled, or agent launch."]
+    keystatus["Status words describe implementation: EXISTING. Color describes role, not status."]
+  end
+  style legend fill:#ffffff,stroke:#cbd5e1
+  style keylines fill:#ffffff,stroke:#9ca3af,color:#111827
+  style keystatus fill:#ffffff,stroke:#9ca3af,color:#111827

@@ -1,0 +1,75 @@
+{
+  "view": "overview",
+  "title": "How one authorized call reaches an outcome — agent sessions",
+  "panels": [
+    {
+      "record": "component",
+      "id": "voice-agent",
+      "name": "ElevenLabs telephone agent",
+      "kind": "agent",
+      "lifecycle": "existing",
+      "confidence": "verified",
+      "responsibility": "Uses supplied facts and authority to conduct one conversation; behavior requires checking against evidence.",
+      "models": [
+        "gpt-4.1-mini; fallback disabled"
+      ],
+      "prompts": [
+        "src/agent.ts AGENT_PROMPT"
+      ],
+      "skills": [],
+      "subagents": [],
+      "tools": [
+        "end_call: hang up",
+        "voicemail_detection: handle an answering machine",
+        "play_keypad_touch_tone: navigate menus",
+        "skip_turn: wait through speech or hold"
+      ],
+      "inputs": [
+        {
+          "id": "initiation",
+          "name": "Fresh provider conversation"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "provider-conversation",
+          "name": "Raw ElevenLabs conversation"
+        }
+      ],
+      "session": {
+        "harness": "ElevenLabs Agents with a dedicated Twilio outbound number",
+        "input_mode": "single",
+        "unit": "One telephone conversation",
+        "context": "Only supplied facts; no cross-call history",
+        "stop": "Success, missing authority, or duration limit; independent Twilio watchdog",
+        "evaluation": {
+          "status": "existing",
+          "cases": "62 local orchestration tests; fictional conversational cases across prompt revisions; one real mailbox acceptance",
+          "execution": "Local tests passed. Eleven text simulations: six manual passes, five failures retained. One real voicemail confirmed by owner.",
+          "checks": "Full transcript and tool inspection in addition to provider judge; physical keypad and acoustic hold transport remain unverified.",
+          "measures": "Attempted, succeeded, failed with failure taxonomy"
+        }
+      },
+      "evidence": [
+        {
+          "source": "src/agent.ts",
+          "symbol": "agentDefinition"
+        },
+        {
+          "source": "private/ordinary-rollout/setup-before.json",
+          "note": "Authenticated production readiness reports exact configured providers and no active call."
+        },
+        {
+          "source": "docs/evidence/conversation-simulations.json"
+        },
+        {
+          "source": "docs/evidence/conversation-transcripts.json"
+        },
+        {
+          "source": "private/ordinary-rollout/after.raw.json",
+          "note": "Live main-branch prompt readback matches current source and approved complete-config fingerprint."
+        }
+      ]
+    }
+  ]
+}

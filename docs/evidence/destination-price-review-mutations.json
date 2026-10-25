@@ -1,0 +1,112 @@
+[
+  {
+    "variant": "baseline",
+    "exit": 1,
+    "counts": [
+      "\n\n Test Files  1 failed (1)",
+      "      Tests  3 failed | 16 passed (19)"
+    ],
+    "failed_tests": [
+      "test/providers.test.ts > provider preflight and schemas > checks account, agent, route, live credits, price and budget quote 18ms",
+      "test/providers.test.ts > provider preflight and schemas > rejects an unsafe voice_fallback_url independently 3ms",
+      "test/providers.test.ts > provider preflight and schemas > rejects an unsafe sms_fallback_url independently 1ms"
+    ]
+  },
+  {
+    "variant": "green",
+    "exit": 0,
+    "counts": [
+      "\n Test Files  1 passed (1)",
+      "      Tests  19 passed (19)"
+    ],
+    "failed_tests": []
+  },
+  {
+    "variant": "omit_caller_filter",
+    "exit": 1,
+    "counts": [
+      "\n\n Test Files  1 failed (1)",
+      "      Tests  1 failed | 18 passed (19)"
+    ],
+    "failed_tests": [
+      "test/providers.test.ts > provider preflight and schemas > checks account, agent, route, live credits, price and budget quote 19ms"
+    ]
+  },
+  {
+    "variant": "omit_destination_identity",
+    "exit": 1,
+    "counts": [
+      "\n\n Test Files  1 failed (1)",
+      "      Tests  1 failed | 18 passed (19)"
+    ],
+    "failed_tests": [
+      "test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: destination 4ms"
+    ]
+  },
+  {
+    "variant": "omit_caller_identity",
+    "exit": 1,
+    "counts": [
+      "\n\n Test Files  1 failed (1)",
+      "      Tests  1 failed | 18 passed (19)"
+    ],
+    "failed_tests": [
+      "test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: origin 3ms"
+    ]
+  },
+  {
+    "variant": "allow_missing_caller",
+    "exit": 1,
+    "counts": [
+      "\n\n Test Files  1 failed (1)",
+      "      Tests  1 failed | 18 passed (19)"
+    ],
+    "failed_tests": [
+      "test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: missing_origin 3ms"
+    ]
+  },
+  {
+    "variant": "allow_multiple_prices",
+    "exit": 1,
+    "counts": [
+      "\n\n Test Files  1 failed (1)",
+      "      Tests  1 failed | 18 passed (19)"
+    ],
+    "failed_tests": [
+      "test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: multiple_prices 4ms"
+    ]
+  },
+  {
+    "variant": "invent_missing_price",
+    "exit": 1,
+    "counts": [
+      "\n\n Test Files  1 failed (1)",
+      "      Tests  1 failed | 18 passed (19)"
+    ],
+    "failed_tests": [
+      "test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: missing_price 3ms"
+    ]
+  },
+  {
+    "variant": "allow_negative_price",
+    "exit": 1,
+    "counts": [
+      "\n\n Test Files  1 failed (1)",
+      "      Tests  1 failed | 18 passed (19)"
+    ],
+    "failed_tests": [
+      "test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: negative 4ms"
+    ]
+  },
+  {
+    "variant": "allow_missing_prefixes",
+    "exit": 1,
+    "counts": [
+      "\n\n Test Files  1 failed (1)",
+      "      Tests  1 failed | 18 passed (19)"
+    ],
+    "failed_tests": [
+      "test/providers.test.ts > provider preflight and schemas > rejects unverified destination pricing: missing_prefixes 3ms"
+    ]
+  }
+]

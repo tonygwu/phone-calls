@@ -1,0 +1,35 @@
+{
+  "local_checks": {
+    "attempted": 51,
+    "succeeded": 51,
+    "failed": 0,
+    "command": "npm run check",
+    "output": "Tests 51 passed (51); Build complete"
+  },
+  "provider_calls": {
+    "attempted": 0,
+    "succeeded": 0,
+    "failed": 0,
+    "not_run_reason": "Credentials and private deployment pending"
+  },
+  "model_simulations": {
+    "attempted": 0,
+    "succeeded": 0,
+    "failed": 0,
+    "prepared_scenarios": 7
+  },
+  "client_connections": {
+    "configured": 0,
+    "pending": [
+      "Claude Code",
+      "ChatGPT",
+      "Codex"
+    ]
+  },
+  "final_price_regressions": {
+    "attempted": 2,
+    "failed_before_fix": 2,
+    "passed_after_fix": 2,
+    "failure_category": "provisional_price_promoted_to_final"
+  }
+}

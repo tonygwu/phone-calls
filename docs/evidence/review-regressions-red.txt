@@ -1,0 +1,278 @@
+
+> phone-calls-mcp@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.12 <project>
+
+ ❯ test/providers.test.ts (10 tests | 2 failed) 14ms
+     ✓ checks account, agent, route, live credits, price and budget quote 7ms
+     ✓ blocks unsafe or unknown account before spending 1ms
+     ✓ blocks unsafe or unknown agent before spending 0ms
+     ✓ blocks unsafe or unknown sms before spending 1ms
+     ✓ blocks unsafe or unknown credits before spending 0ms
+     ✓ blocks unsafe or unknown price before spending 1ms
+     ✓ blocks unsafe or unknown stale before spending 0ms
+     ✓ fails loud on missing dispatch telemetry 0ms
+     × rejects an unsafe voice_fallback_url independently 3ms
+     × rejects an unsafe sms_fallback_url independently 1ms
+ ✓ test/mcp.test.ts (1 test) 14ms
+ ❯ test/engine.test.ts (30 tests | 4 failed) 81ms
+     ✓ rejects Canadian numbers, missing essentials and long reminders 19ms
+     ✓ allows only the test destination before acceptance 3ms
+     ✓ reserves budget before dispatch and returns immediately 3ms
+     ✓ rejects exhaustion and unknown pricing without dialing 2ms
+     ✓ deduplicates retries and rejects changed intent 2ms
+     ✓ resolves concurrent starts to a single active call 2ms
+     × does not let an older processing callback lower settled spending or admit another call 5ms
+     × keeps the allowance reserved when only provisional provider prices exist 2ms
+     ✓ never redials an ambiguous timeout, including after restart 3ms
+     ✓ recovers a crash after the dispatch marker without sending 1ms
+     ✓ merges callbacks before the outbound response and handles duplicate events 2ms
+     ✓ rejects callback identity mismatches 3ms
+     ✓ does not infer a successful task from a completed call 1ms
+     ✓ preserves uncertainty if a success response has no provider IDs 2ms
+     × runs the active watchdog before terminal-call recovery and defers that background work 4ms
+     ✓ still terminates a known Twilio call if ElevenLabs is unavailable 2ms
+     ✓ does not dial stale pending work after a delayed alarm 1ms
+     ✓ cancels pending tasks without ever contacting a dial endpoint 2ms
+     ✓ does not claim termination from a successful update alone 1ms
+     ✓ persistent watchdog terminates at the duration plus ringing deadline 1ms
+     ✓ retains cancellation intent while dispatch identity is unknown 2ms
+     × rejects expired duplicate requests even if the purge alarm has not run 2ms
+     ✓ purges content at 30 days and rejects ancient retry keys 2ms
+     ✓ purges unresolved calls too, while blocking new calls for reconciliation 2ms
+     ✓ does not reduce watchdog retry frequency after a day of provider failures 1ms
+     ✓ preserves voicemail_attempted with explicit evidence limits 2ms
+     ✓ preserves delivered_to_person with explicit evidence limits 2ms
+     ✓ preserves needs_user_input with explicit evidence limits 1ms
+     ✓ preserves partial with explicit evidence limits 2ms
+     ✓ sends fresh context as initiation data without changing the saved agent 2ms
+ ✓ test/security.test.ts (6 tests) 80ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/engine.test.ts > uncertain dispatch, callbacks and recovery > does not let an older processing callback lower settled spending or admit another call
+AssertionError: expected 24000 to be 1014000 // Object.is equality
+
+- Expected
++ Received
+
+- 1014000
++ 24000
+
+ ❯ test/engine.test.ts:63:42
+     61|     p.conversation.mockImplementationOnce(() => new Promise(resolve =>…
+     62|     const stale = e.callback("conv_test"); await e.callback("conv_test…
+     63|     expect.soft(e.store.used("2026-10")).toBe(1014000); expect(e.requi…
+       |                                          ^
+     64|     e.config.budget.fixedMonthlyUsd = 8.8;
+     65|     await expect(e.start({ ...input, request_id: "after-stale-callback…
+ ❯ test/engine.test.ts:15:5
+ ❯ maybeHandleRunRequest <project>/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:157:18
+ ❯ DurableObject.Wrapper.fetch <project>/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:552:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  test/engine.test.ts > uncertain dispatch, callbacks and recovery > does not let an older processing callback lower settled spending or admit another call
+AssertionError: promise resolved "{ …(18) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "call_id": "7c3de95e-7ea1-46a5-b877-5b64abb6fbfd",
++   "cancel_requested": false,
++   "confirmation_details": null,
++   "cost": {
++     "elevenlabs_total_fiat_usd": null,
++     "note": "ElevenLabs total fiat is conservatively charged against the additional budget even when subscription credits cover it.",
++     "reserved_usd": 0.4,
++     "status": "unsettled",
++     "twilio_usd": null,
++   },
++   "created_at": "2026-10-25T05:00:00.000Z",
++   "delivery_verified": false,
++   "error": null,
++   "evidence": null,
++   "expires_at": "2026-11-24T05:00:00.000Z",
++   "poll_after_seconds": 15,
++   "provider": {
++     "call_sid": null,
++     "configured_model": "gpt-4.1-mini",
++     "conversation_id": null,
++     "served_model": "not_reported",
++   },
++   "recording_url": null,
++   "summary": null,
++   "task_outcome": "pending",
++   "telephone_status": "pending",
++   "termination_confirmed": false,
++   "transcript": null,
++   "unresolved_questions": null,
+  }
+
+ ❯ test/engine.test.ts:65:76
+     63|     expect.soft(e.store.used("2026-10")).toBe(1014000); expect(e.requi…
+     64|     e.config.budget.fixedMonthlyUsd = 8.8;
+     65|     await expect(e.start({ ...input, request_id: "after-stale-callback…
+       |                                                                            ^
+     66|   }));
+     67|   it("keeps the allowance reserved when only provisional provider pric…
+ ❯ test/engine.test.ts:15:5
+ ❯ maybeHandleRunRequest <project>/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:157:18
+ ❯ DurableObject.Wrapper.fetch <project>/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:552:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  test/engine.test.ts > uncertain dispatch, callbacks and recovery > keeps the allowance reserved when only provisional provider prices exist
+AssertionError: expected 24000 to be 400000 // Object.is equality
+
+- Expected
++ Received
+
+- 400000
++ 24000
+
+ ❯ test/engine.test.ts:71:37
+     69|     const c = conversation(task); c.status = "processing"; c.metadata.…
+     70|     applyConversation(task, c); task.twilioCostMicros = 14000; e.store…
+     71|     expect(e.store.used("2026-10")).toBe(400000);
+       |                                     ^
+     72|   }));
+     73|   it("never redials an ambiguous timeout, including after restart", as…
+ ❯ test/engine.test.ts:15:5
+ ❯ maybeHandleRunRequest <project>/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:157:18
+ ❯ DurableObject.Wrapper.fetch <project>/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:552:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  test/engine.test.ts > cancellation and enforced duration > runs the active watchdog before terminal-call recovery and defers that background work
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ test/engine.test.ts:121:30
+    119|     });
+    120|     const work = e.tick(); await new Promise(resolve => setTimeout(res…
+    121|     expect.soft(p.terminate).toHaveBeenCalledTimes(1);
+       |                              ^
+    122|     expect.soft(p.call.mock.calls.some(([t]) => t.id === oldId)).toBe(…
+    123|     release(); await work;
+ ❯ test/engine.test.ts:15:5
+ ❯ maybeHandleRunRequest <project>/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:157:18
+ ❯ DurableObject.Wrapper.fetch <project>/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:552:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  test/engine.test.ts > cancellation and enforced duration > runs the active watchdog before terminal-call recovery and defers that background work
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/engine.test.ts:122:66
+    120|     const work = e.tick(); await new Promise(resolve => setTimeout(res…
+    121|     expect.soft(p.terminate).toHaveBeenCalledTimes(1);
+    122|     expect.soft(p.call.mock.calls.some(([t]) => t.id === oldId)).toBe(…
+       |                                                                  ^
+    123|     release(); await work;
+    124|   }));
+ ❯ test/engine.test.ts:15:5
+ ❯ maybeHandleRunRequest <project>/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:157:18
+ ❯ DurableObject.Wrapper.fetch <project>/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:552:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+ FAIL  test/engine.test.ts > retention, pagination and conversation outcomes > rejects expired duplicate requests even if the purge alarm has not run
+AssertionError: promise resolved "{ …(18) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "call_id": "61a6b9a8-a331-4a5f-b748-753bcb2f953c",
++   "cancel_requested": true,
++   "confirmation_details": "Private confirmation",
++   "cost": {
++     "elevenlabs_total_fiat_usd": 0,
++     "note": "ElevenLabs total fiat is conservatively charged against the additional budget even when subscription credits cover it.",
++     "reserved_usd": 0.4,
++     "status": "provider_reported",
++     "twilio_usd": 0,
++   },
++   "created_at": "2026-10-25T05:00:00.000Z",
++   "delivery_verified": false,
++   "error": null,
++   "evidence": null,
++   "expires_at": "2026-11-24T05:00:00.000Z",
++   "poll_after_seconds": 60,
++   "provider": {
++     "call_sid": null,
++     "configured_model": "gpt-4.1-mini",
++     "conversation_id": null,
++     "served_model": "not_reported",
++   },
++   "recording_url": null,
++   "summary": "Private result",
++   "task_outcome": "failed",
++   "telephone_status": "not_dispatched",
++   "termination_confirmed": true,
++   "transcript": null,
++   "unresolved_questions": null,
+  }
+
+ ❯ test/engine.test.ts:159:33
+    157|     const task = e.require(id); task.summary = "Private result"; task.…
+    158|     advance(RETENTION);
+    159|     await expect(e.start(input)).rejects.toMatchObject({ code: "REQUES…
+       |                                 ^
+    160|     expect(p.dispatch).not.toHaveBeenCalled();
+    161|   }));
+ ❯ test/engine.test.ts:15:5
+ ❯ maybeHandleRunRequest <project>/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:157:18
+ ❯ DurableObject.Wrapper.fetch <project>/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:552:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/8]⎯
+
+ FAIL  test/providers.test.ts > provider preflight and schemas > rejects an unsafe voice_fallback_url independently
+ FAIL  test/providers.test.ts > provider preflight and schemas > rejects an unsafe sms_fallback_url independently
+AssertionError: promise resolved "{ reservationMicros: 362000, …(8) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "accountSid": "AC11111111111111111111111111111111",
++   "agentId": "agent_test",
++   "checkedAt": 1792904400000,
++   "creditsAvailable": 99900,
++   "model": "gpt-4.1-mini",
++   "reservationMicros": 362000,
++   "twilioBalanceUsd": 10,
++   "twilioPerMinuteUsd": 0.014,
++   "voiceId": "stock_voice",
+  }
+
+ ❯ test/providers.test.ts:50:56
+     48|     const { p, responses } = await setup();
+     49|     (responses[`/2010-04-01/Accounts/${cfg.twilioAccountSid}/IncomingP…
+     50|     await expect(p.preflight(cfg.selfNumber, 180, NOW)).rejects.toMatc…
+       |                                                        ^
+     51|   });
+     52| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/8]⎯
+
+
+ Test Files  2 failed | 2 passed (4)
+      Tests  6 failed | 41 passed (47)
+   Start at  22:50:56
+   Duration  1.16s (transform 848ms, setup 0ms, import 2.97s, tests 189ms, environment 0ms)
+

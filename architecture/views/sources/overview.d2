@@ -1,0 +1,82 @@
+direction: right
+label: "How one authorized call reaches an outcome\nWhat does the owner receive?\nThe client first awaits provider checks of configuration, routing, credits, rates and funding. The coordinator then persists a pending call and alarm and returns an ID. A later alarm dials once. The three primary clients have authenticated. Additional Claude profiles need separate sign-in."
+n_client: "MCP client\nClient application | EXISTING\nPrimary Codex, ChatGPT and Claude Code submit authorized briefs and retrieve results. Three additional Claude profiles still need login." {
+  shape: rectangle
+  style.fill: "#e0f2fe"
+  style.stroke: "#0284c7"
+}
+n_worker: "Authenticated Worker\nWorker - processes assigned work | EXISTING\nChecks owner identity and provider signatures." {
+  shape: rectangle
+  style.fill: "#cffafe"
+  style.stroke: "#0891b2"
+}
+n_ledger: "Durable call coordinator\nProgram step - fixed rules | EXISTING\nAdmits one call, reserves budget and reconciles evidence." {
+  shape: rectangle
+  style.fill: "#dbeafe"
+  style.stroke: "#2563eb"
+}
+n_storage: "SQLite storage\nSaved data | EXISTING | [storage]\nPersists tasks before dialing and deletes content after 30 days." {
+  shape: cylinder
+  style.fill: "#dcfce7"
+  style.stroke: "#16a34a"
+}
+n_access: "Cloudflare Access login\nExternal software or service | EXISTING\nSupplies a signed owner assertion after OAuth login." {
+  shape: parallelogram
+  style.fill: "#fef3c7"
+  style.stroke: "#d97706"
+}
+n_twilio: "Twilio telephone connection\nExternal software or service | EXISTING\nProvides the dedicated number, call status and forced hangup." {
+  shape: parallelogram
+  style.fill: "#fef3c7"
+  style.stroke: "#d97706"
+}
+n_voice_agent: "ElevenLabs telephone agent\nAgent - chooses its next action | EXISTING\nUses supplied facts and authority to conduct one conversation; behavior requires checking against evidence." {
+  shape: rectangle
+  style.fill: "#fee2e2"
+  style.stroke: "#dc2626"
+}
+n_client -> n_worker: "Submit authorized task | Authorized brief [brief]"
+n_worker -> n_ledger: "Route owner operation | Authorized brief [brief]"
+n_ledger -> n_storage: "Persist before the provider request | Call tasks [calls]"
+n_ledger -> n_voice_agent: "Initiate once with fresh context | Fresh provider conversation [initiation]"
+n_ledger -> n_twilio: "Read status and request termination"
+n_voice_agent -> n_worker: "Signed callback wakes reconciliation" { style.stroke-dash: 5 }
+n_ledger -> n_voice_agent: "Read conversation; returns raw provider evidence | Raw ElevenLabs conversation [provider-conversation]"
+n_worker -> n_client: "Return separate status and outcome | Outcome and evidence [result]"
+n_access -> n_worker: "Signed owner identity"
+n_ledger -> n_voice_agent: "Check agent, number and credits before admission | Provider admission facts [admission]"
+n_ledger -> n_twilio: "Check account, routing, balance and current rate before admission | Provider admission facts [admission]"
+n_ledger -> n_twilio: "Read telephone status and charge | Raw Twilio call state [provider-call]"
+legend: "Key - colors and shapes identify roles" {
+keyagent: "Agent - chooses its next action" {
+  shape: rectangle
+  style.fill: "#fee2e2"
+  style.stroke: "#dc2626"
+}
+keyclient: "Client application" {
+  shape: rectangle
+  style.fill: "#e0f2fe"
+  style.stroke: "#0284c7"
+}
+keydatastore: "Saved data" {
+  shape: cylinder
+  style.fill: "#dcfce7"
+  style.stroke: "#16a34a"
+}
+keydeterministic: "Program step - fixed rules" {
+  shape: rectangle
+  style.fill: "#dbeafe"
+  style.stroke: "#2563eb"
+}
+keyexternal: "External software or service" {
+  shape: parallelogram
+  style.fill: "#fef3c7"
+  style.stroke: "#d97706"
+}
+keyworker: "Worker - processes assigned work" {
+  shape: rectangle
+  style.fill: "#cffafe"
+  style.stroke: "#0891b2"
+}
+keylines: "Solid arrow: synchronous call or data transfer. Dashed arrow: asynchronous, scheduled, or agent launch."
+}

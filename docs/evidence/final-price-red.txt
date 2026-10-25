@@ -1,0 +1,229 @@
+
+> phone-calls-mcp@0.1.0 test
+> vitest run --run test/engine.test.ts -t ends without a final price
+
+
+ RUN  v4.1.12 <project>
+
+ ❯ test/engine.test.ts (34 tests | 2 failed | 32 skipped) 20ms
+     ↓ rejects Canadian numbers, missing essentials and long reminders
+     ↓ allows only the test destination before acceptance
+     ↓ reserves budget before dispatch and returns immediately
+     ↓ rejects exhaustion and unknown pricing without dialing
+     ↓ deduplicates retries and rejects changed intent
+     ↓ resolves concurrent starts to a single active call
+     × keeps polling and reserving budget when ElevenLabs ends without a final price 15ms
+     × keeps polling and reserving budget when Twilio ends without a final price 4ms
+     ↓ does not let an older processing callback lower settled spending or admit another call
+     ↓ does not let an older done callback lower settled spending or admit another call
+     ↓ keeps the allowance reserved when only provisional provider prices exist
+     ↓ never redials an ambiguous timeout, including after restart
+     ↓ recovers a crash after the dispatch marker without sending
+     ↓ merges callbacks before the outbound response and handles duplicate events
+     ↓ rejects callback identity mismatches
+     ↓ does not infer a successful task from a completed call
+     ↓ preserves uncertainty if a success response has no provider IDs
+     ↓ schedules the next active check without spinning on deferred background tasks
+     ↓ runs the active watchdog before terminal-call recovery and defers that background work
+     ↓ still terminates a known Twilio call if ElevenLabs is unavailable
+     ↓ does not dial stale pending work after a delayed alarm
+     ↓ cancels pending tasks without ever contacting a dial endpoint
+     ↓ does not claim termination from a successful update alone
+     ↓ persistent watchdog terminates at the duration plus ringing deadline
+     ↓ retains cancellation intent while dispatch identity is unknown
+     ↓ rejects expired duplicate requests even if the purge alarm has not run
+     ↓ purges content at 30 days and rejects ancient retry keys
+     ↓ purges unresolved calls too, while blocking new calls for reconciliation
+     ↓ does not reduce watchdog retry frequency after a day of provider failures
+     ↓ preserves voicemail_attempted with explicit evidence limits
+     ↓ preserves delivered_to_person with explicit evidence limits
+     ↓ preserves needs_user_input with explicit evidence limits
+     ↓ preserves partial with explicit evidence limits
+     ↓ sends fresh context as initiation data without changing the saved agent
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/engine.test.ts > uncertain dispatch, callbacks and recovery > keeps polling and reserving budget when ElevenLabs ends without a final price
+ FAIL  test/engine.test.ts > uncertain dispatch, callbacks and recovery > keeps polling and reserving budget when Twilio ends without a final price
+AssertionError: expected 24000 to be 400000 // Object.is equality
+
+- Expected
++ Received
+
+- 400000
++ 24000
+
+ ❯ test/engine.test.ts:69:42
+     67|     p.call.mockResolvedValue({ ...phone, status: "completed", price: m…
+     68|     await e.reconcile(id);
+     69|     expect.soft(e.store.used("2026-10")).toBe(400000);
+       |                                          ^
+     70|     expect.soft(e.view(e.require(id)).cost).toMatchObject({ status: "u…
+     71|     expect.soft(e.require(id).nextCheck).toBe(NOW + 60000);
+ ❯ test/engine.test.ts:15:5
+ ❯ maybeHandleRunRequest Users/tonygwu/Code/phone-calls/repo-0/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:157:18
+ ❯ DurableObject.Wrapper.fetch Users/tonygwu/Code/phone-calls/repo-0/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:552:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/8]⎯
+
+ FAIL  test/engine.test.ts > uncertain dispatch, callbacks and recovery > keeps polling and reserving budget when ElevenLabs ends without a final price
+ FAIL  test/engine.test.ts > uncertain dispatch, callbacks and recovery > keeps polling and reserving budget when Twilio ends without a final price
+AssertionError: expected { reserved_usd: 0.4, …(4) } to match object { status: 'unsettled' }
+(4 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "status": "unsettled",
++   "status": "provider_reported",
+  }
+
+ ❯ test/engine.test.ts:70:45
+     68|     await e.reconcile(id);
+     69|     expect.soft(e.store.used("2026-10")).toBe(400000);
+     70|     expect.soft(e.view(e.require(id)).cost).toMatchObject({ status: "u…
+       |                                             ^
+     71|     expect.soft(e.require(id).nextCheck).toBe(NOW + 60000);
+     72|     e.config.budget.fixedMonthlyUsd = 9.5;
+ ❯ test/engine.test.ts:15:5
+ ❯ maybeHandleRunRequest Users/tonygwu/Code/phone-calls/repo-0/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:157:18
+ ❯ DurableObject.Wrapper.fetch Users/tonygwu/Code/phone-calls/repo-0/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:552:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/8]⎯
+
+ FAIL  test/engine.test.ts > uncertain dispatch, callbacks and recovery > keeps polling and reserving budget when ElevenLabs ends without a final price
+ FAIL  test/engine.test.ts > uncertain dispatch, callbacks and recovery > keeps polling and reserving budget when Twilio ends without a final price
+AssertionError: expected 1795496400000 to be 1792904460000 // Object.is equality
+
+- Expected
++ Received
+
+- 1792904460000
++ 1795496400000
+
+ ❯ test/engine.test.ts:71:42
+     69|     expect.soft(e.store.used("2026-10")).toBe(400000);
+     70|     expect.soft(e.view(e.require(id)).cost).toMatchObject({ status: "u…
+     71|     expect.soft(e.require(id).nextCheck).toBe(NOW + 60000);
+       |                                          ^
+     72|     e.config.budget.fixedMonthlyUsd = 9.5;
+     73|     await expect(e.start({ ...input, request_id: "after-final-price" }…
+ ❯ test/engine.test.ts:15:5
+ ❯ maybeHandleRunRequest Users/tonygwu/Code/phone-calls/repo-0/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:157:18
+ ❯ DurableObject.Wrapper.fetch Users/tonygwu/Code/phone-calls/repo-0/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:552:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/8]⎯
+
+ FAIL  test/engine.test.ts > uncertain dispatch, callbacks and recovery > keeps polling and reserving budget when ElevenLabs ends without a final price
+AssertionError: promise resolved "{ …(18) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "call_id": "65b6fdc8-cc59-4fbb-a295-4b7b576a1c2d",
++   "cancel_requested": false,
++   "confirmation_details": null,
++   "cost": {
++     "elevenlabs_total_fiat_usd": null,
++     "note": "ElevenLabs total fiat is conservatively charged against the additional budget even when subscription credits cover it. Reported charges never decrease automatically; refunds require reconciliation.",
++     "reserved_usd": 0.4,
++     "status": "unsettled",
++     "twilio_usd": null,
++   },
++   "created_at": "2026-10-25T05:00:00.000Z",
++   "delivery_verified": false,
++   "error": null,
++   "evidence": null,
++   "expires_at": "2026-11-24T05:00:00.000Z",
++   "poll_after_seconds": 15,
++   "provider": {
++     "call_sid": null,
++     "configured_model": "gpt-4.1-mini",
++     "conversation_id": null,
++     "served_model": "not_reported",
++   },
++   "recording_url": null,
++   "summary": null,
++   "task_outcome": "pending",
++   "telephone_status": "pending",
++   "termination_confirmed": false,
++   "transcript": null,
++   "unresolved_questions": null,
+  }
+
+ ❯ test/engine.test.ts:73:73
+     71|     expect.soft(e.require(id).nextCheck).toBe(NOW + 60000);
+     72|     e.config.budget.fixedMonthlyUsd = 9.5;
+     73|     await expect(e.start({ ...input, request_id: "after-final-price" }…
+       |                                                                         ^
+     74|
+     75|     // A later terminal response supplies the missing price and releas…
+ ❯ test/engine.test.ts:15:5
+ ❯ maybeHandleRunRequest Users/tonygwu/Code/phone-calls/repo-0/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:157:18
+ ❯ DurableObject.Wrapper.fetch Users/tonygwu/Code/phone-calls/repo-0/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:552:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/8]⎯
+
+ FAIL  test/engine.test.ts > uncertain dispatch, callbacks and recovery > keeps polling and reserving budget when Twilio ends without a final price
+AssertionError: promise resolved "{ …(18) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "call_id": "a18b92c9-0f46-48a5-93b4-4a90500a266e",
++   "cancel_requested": false,
++   "confirmation_details": null,
++   "cost": {
++     "elevenlabs_total_fiat_usd": null,
++     "note": "ElevenLabs total fiat is conservatively charged against the additional budget even when subscription credits cover it. Reported charges never decrease automatically; refunds require reconciliation.",
++     "reserved_usd": 0.4,
++     "status": "unsettled",
++     "twilio_usd": null,
++   },
++   "created_at": "2026-10-25T05:00:00.000Z",
++   "delivery_verified": false,
++   "error": null,
++   "evidence": null,
++   "expires_at": "2026-11-24T05:00:00.000Z",
++   "poll_after_seconds": 15,
++   "provider": {
++     "call_sid": null,
++     "configured_model": "gpt-4.1-mini",
++     "conversation_id": null,
++     "served_model": "not_reported",
++   },
++   "recording_url": null,
++   "summary": null,
++   "task_outcome": "pending",
++   "telephone_status": "pending",
++   "termination_confirmed": false,
++   "transcript": null,
++   "unresolved_questions": null,
+  }
+
+ ❯ test/engine.test.ts:73:73
+     71|     expect.soft(e.require(id).nextCheck).toBe(NOW + 60000);
+     72|     e.config.budget.fixedMonthlyUsd = 9.5;
+     73|     await expect(e.start({ ...input, request_id: "after-final-price" }…
+       |                                                                         ^
+     74|
+     75|     // A later terminal response supplies the missing price and releas…
+ ❯ test/engine.test.ts:15:5
+ ❯ maybeHandleRunRequest Users/tonygwu/Code/phone-calls/repo-0/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:157:18
+ ❯ DurableObject.Wrapper.fetch Users/tonygwu/Code/phone-calls/repo-0/node_modules/@cloudflare/vitest-plugin/dist/worker/lib/cloudflare/test-internal.mjs:552:20
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/8]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 32 skipped (34)
+   Start at  09:57:17
+   Duration  3.71s (transform 483ms, setup 0ms, import 1.15s, tests 20ms, environment 0ms)
+

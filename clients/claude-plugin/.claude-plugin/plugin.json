@@ -1,0 +1,5 @@
+{
+  "name": "private-phone-calls",
+  "version": "0.1.0",
+  "description": "Owner-authorized phone calls through a private Cloudflare MCP endpoint."
+}
