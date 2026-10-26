@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { LiveProviders, dispatchResponse, conversationSchema } from "../src/providers";
 import { agentDefinition, agentHash } from "../src/agent";
 import { cfg, NOW } from "./fixtures";
-import type { Env } from "../src/config";
+import { configSchema, type Env } from "../src/config";
 
 async function setup(overrides: Record<string, unknown> = {}) {
   const agent = { ...agentDefinition(cfg.voiceId), agent_id: cfg.elevenAgentId };
@@ -26,21 +26,34 @@ async function setup(overrides: Record<string, unknown> = {}) {
   return { p: new LiveProviders(env, c, fetcher), responses, c, fetcher };
 }
 describe("provider preflight and schemas", () => {
-  it("checks account, agent, route, live credits, price and budget quote", async () => {
+  it("accepts standing cost allowances without renewal timestamps", () => {
+    const { verifiedAt: _verified, expiresAt: _expires, ...budget } = cfg.budget;
+    expect(configSchema.parse({ ...cfg, budget }).budget).toEqual(budget);
+  });
+  it("checks live rates and credits after legacy allowance timestamps expire", async () => {
+    const { p, c, fetcher } = await setup();
+    c.budget = { ...c.budget, verifiedAt: "2026-01-01T00:00:00Z", expiresAt: "2026-01-02T00:00:00Z" };
+    const q = await p.preflight(cfg.selfNumber, 180, NOW);
+    expect(q).toMatchObject({ checkedAt: NOW, reservationMicros: 362000, creditsAvailable: 99900, twilioBalanceUsd: 10 });
+    expect(fetcher).toHaveBeenCalledTimes(7);
+    const pricing = vi.mocked(fetcher).mock.calls.map(([url]) => new URL(String(url))).find(url => url.hostname === "pricing.twilio.com");
+    expect(pricing?.pathname).toBe(`/v2/Voice/Numbers/${encodeURIComponent(cfg.selfNumber)}`);
+    expect(pricing?.searchParams.get("OriginationNumber")).toBe(cfg.fromNumber);
+  });
+  it("checks account, agent, route, live credits, price and standing allowance", async () => {
     const { p, fetcher } = await setup(); const q = await p.preflight(cfg.selfNumber, 180, NOW);
     expect(q).toMatchObject({ accountSid: cfg.twilioAccountSid, agentId: cfg.elevenAgentId, model: "gpt-4.1-mini", creditsAvailable: 99900, twilioBalanceUsd: 10, reservationMicros: 362000 });
     const urls = vi.mocked(fetcher).mock.calls.map(([url]) => new URL(String(url)));
     const pricing = urls.find(url => url.hostname === "pricing.twilio.com");
     expect(pricing?.searchParams.get("OriginationNumber")).toBe(cfg.fromNumber);
   });
-  it.each(["account", "agent", "sms", "credits", "price", "stale"])("blocks unsafe or unknown %s before spending", async variant => {
-    const { p, responses, c } = await setup();
+  it.each(["account", "agent", "sms", "credits", "price"])("blocks unsafe or unknown %s before spending", async variant => {
+    const { p, responses } = await setup();
     if (variant === "account") (responses[`/2010-04-01/Accounts/${cfg.twilioAccountSid}.json`] as any).sid = "different";
     if (variant === "agent") (responses[`/v1/convai/agents/${cfg.elevenAgentId}`] as any).conversation_config.agent.prompt.llm = "different";
     if (variant === "sms") (responses[`/2010-04-01/Accounts/${cfg.twilioAccountSid}/IncomingPhoneNumbers/${cfg.twilioNumberSid}.json`] as any).sms_url = "https://example.com/sms";
     if (variant === "credits") (responses["/v1/user/subscription"] as any).character_limit = 100;
     if (variant === "price") (responses[`/v2/Voice/Numbers/${encodeURIComponent(cfg.selfNumber)}`] as any).outbound_call_prices = [{}];
-    if (variant === "stale") c.budget = { ...c.budget, expiresAt: "2026-10-24T00:00:00Z" };
     await expect(p.preflight(cfg.selfNumber, 180, NOW)).rejects.toThrow();
   });
   it.each(["destination", "origin", "missing_origin", "empty_prices", "multiple_prices", "missing_price", "negative", "nonfinite", "missing_prefixes"])("rejects unverified destination pricing: %s", async variant => {

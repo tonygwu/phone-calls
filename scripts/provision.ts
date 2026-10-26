@@ -16,7 +16,6 @@ const mode = process.argv[2];
 if (!["prepare", "apply"].includes(mode)) throw new Error("Usage: provision.ts prepare|apply. Read docs/DEPLOYMENT.md first.");
 const setup = setupSchema.parse(JSON.parse(readFileSync("private/setup.json", "utf8")));
 if (setup.budget.fixedMonthlyUsd < setup.quotedNumberMonthlyUsd || setup.budget.fixedMonthlyUsd >= 10) throw new Error("Number and fixed hosting costs must fit the approved $10 additional budget.");
-if (Date.parse(setup.budget.expiresAt) <= Date.now()) throw new Error("The cost quote has expired. Inspect current prices before provisioning.");
 mkdirSync("private", { recursive: true, mode: 0o700 });
 const write = (file: string, data: unknown) => writeFileSync(file, JSON.stringify(data, null, 2) + "\n", { mode: 0o600 });
 const host = new URL(setup.publicOrigin).hostname;

@@ -52,7 +52,7 @@ export class CallLedger extends DurableObject<Env> {
         await engine.callback(args.conversation_id); data = { persisted: true };
       } else if (path === "/setup") {
         const c = config(this.env);
-        const budget = { limit_usd: c.budget.monthlyUsd, fixed_monthly_usd: c.budget.fixedMonthlyUsd, accounted_usd: this.store.used(monthAt(Date.now())) / 1e6, quote_expires_at: c.budget.expiresAt };
+        const budget = { limit_usd: c.budget.monthlyUsd, fixed_monthly_usd: c.budget.fixedMonthlyUsd, accounted_usd: this.store.used(monthAt(Date.now())) / 1e6 };
         try {
           const quote = await engine.providers.preflight(c.selfNumber, 180, Date.now());
           const active = this.store.active();

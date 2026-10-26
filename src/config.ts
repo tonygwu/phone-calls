@@ -22,7 +22,9 @@ export const configSchema = z.strictObject({
     additionalPerMinuteUsd: dollars.describe("Upper bound for ElevenLabs, LLM, analysis and applicable taxes beyond included subscription credits."),
     additionalPerCallUsd: dollars,
     elevenCreditsPerMinute: z.number().positive(),
-    verifiedAt: z.iso.datetime(), expiresAt: z.iso.datetime(), source: z.string().min(10),
+    source: z.string().min(10),
+    // Accepted for existing deployment configs; these timestamps do not govern calls.
+    verifiedAt: z.iso.datetime().optional(), expiresAt: z.iso.datetime().optional(),
   }),
 }).refine(c => c.testOnly || c.voicemailAcceptance !== null, "Ordinary destinations require a confirmed voicemail acceptance record.");
 export type Config = z.infer<typeof configSchema>;
