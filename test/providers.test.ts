@@ -26,6 +26,21 @@ async function setup(overrides: Record<string, unknown> = {}) {
   return { p: new LiveProviders(env, c, fetcher), responses, c, fetcher };
 }
 describe("provider preflight and schemas", () => {
+  it("accepts provider-materialized empty analysis metadata without mutating its input", async () => {
+    const approved = agentDefinition(cfg.voiceId);
+    const readback = structuredClone(approved);
+    for (const field of Object.values(readback.platform_settings.data_collection)) Object.assign(field, { non_sensitive_value: null });
+    expect(await agentHash(readback)).toBe(await agentHash(approved));
+    for (const field of Object.values(readback.platform_settings.data_collection)) expect(field).toHaveProperty("non_sensitive_value", null);
+  });
+  it.each(["nonempty", "other_field", "workflow"])("retains hash protection for changed analysis/configuration: %s", async variant => {
+    const approved = agentDefinition(cfg.voiceId);
+    const readback = structuredClone(approved);
+    if (variant === "nonempty") Object.assign(readback.platform_settings.data_collection.outcome, { non_sensitive_value: "changed" });
+    if (variant === "other_field") Object.assign(readback.platform_settings.data_collection.outcome, { other_provider_field: null });
+    if (variant === "workflow") Object.assign(readback, { workflow: { nodes: { additional: { type: "tool" } } } });
+    expect(await agentHash(readback)).not.toBe(await agentHash(approved));
+  });
   it("accepts standing cost allowances without renewal timestamps", () => {
     const { verifiedAt: _verified, expiresAt: _expires, ...budget } = cfg.budget;
     expect(configSchema.parse({ ...cfg, budget }).budget).toEqual(budget);

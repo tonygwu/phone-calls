@@ -67,10 +67,15 @@ export function agentDefinition(voiceId: string) {
   };
 }
 
-// Hash the full provider readback configuration, so additions such as workflows or
-// extra tools cannot silently circumvent the approved prompt and controls.
+// Hash the provider configuration so workflows and extra tools cannot silently
+// circumvent approved controls. ElevenLabs may add null analysis metadata to an
+// existing agent response; only that known empty default is equivalent to absence.
 export async function agentHash(agent: Record<string, unknown>) {
-  return digest(canonical({ conversation_config: agent.conversation_config, platform_settings: agent.platform_settings, workflow: agent.workflow ?? null }));
+  const platformSettings = structuredClone(agent.platform_settings) as { data_collection: Record<string, Record<string, unknown>> };
+  for (const field of Object.values(platformSettings.data_collection)) {
+    if (field.non_sensitive_value === null) delete field.non_sensitive_value;
+  }
+  return digest(canonical({ conversation_config: agent.conversation_config, platform_settings: platformSettings, workflow: agent.workflow ?? null }));
 }
 
 export function dispatchBody(task: Task, c: Config) {
