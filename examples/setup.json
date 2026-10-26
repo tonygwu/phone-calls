@@ -16,8 +16,6 @@
     "additionalPerMinuteUsd": null,
     "additionalPerCallUsd": null,
     "elevenCreditsPerMinute": null,
-    "verifiedAt": null,
-    "expiresAt": null,
     "source": "Replace null values with verified rates, included credits, taxes and incremental hosting costs."
   },
   "selectedNumber": "+14155550123",

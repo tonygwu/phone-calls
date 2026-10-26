@@ -32,6 +32,28 @@ describe("validation and spend admission", () => {
     p.dispatch.mockImplementationOnce(async () => { expect(e.require(t.id).telephone).toBe("dispatching"); return { success: true, message: "ok", conversation_id: "conv_test", callSid: "CA" + "3".repeat(32) }; });
     await e.tick(); expect(p.dispatch).toHaveBeenCalledTimes(1);
   }));
+  it("admits and dispatches calls after the legacy allowance timestamp", async () => scenario(async (e, p) => {
+    e.config.budget.expiresAt = new Date(NOW - 1).toISOString();
+    const id = idOf(await e.start(input));
+    expect(e.require(id).telephone).toBe("pending");
+    await e.tick();
+    expect(p.dispatch).toHaveBeenCalledTimes(1);
+    expect(e.require(id).telephone).toBe("queued");
+  }));
+  it("dispatches accepted calls when a legacy allowance timestamp passes", async () => scenario(async (e, p, advance) => {
+    e.config.budget.expiresAt = new Date(NOW + 500).toISOString();
+    const id = idOf(await e.start(input));
+    advance(1000);
+    await e.tick();
+    expect(p.dispatch).toHaveBeenCalledTimes(1);
+    expect(e.require(id).telephone).toBe("queued");
+  }));
+  it("still rejects provider checks older than the call admission window", async () => scenario(async (e, p) => {
+    const quote = await p.preflight("", 0, NOW);
+    p.preflight.mockResolvedValueOnce({ ...quote, checkedAt: NOW - 61000 });
+    await expect(e.start(input)).rejects.toMatchObject({ code: "PRICING_EXPIRED" });
+    expect(p.dispatch).not.toHaveBeenCalled();
+  }));
   it("rejects exhaustion and unknown pricing without dialing", async () => scenario(async (e, p) => {
     p.preflight.mockResolvedValueOnce({ ...(await p.preflight("", 0, NOW)), reservationMicros: 9_000_000 });
     await expect(e.start(input)).rejects.toMatchObject({ code: "BUDGET_EXHAUSTED" });

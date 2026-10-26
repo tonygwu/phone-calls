@@ -33,7 +33,7 @@ export class CallEngine {
     }
     if (this.store.active()) throw new CallError("CALL_IN_PROGRESS", "Another call was accepted while setup was being checked.");
     const now = this.now();
-    if (now - quote.checkedAt > 60_000 || Date.parse(this.config.budget.expiresAt) <= now) throw new CallError("PRICING_EXPIRED", "The preflight quote expired. Retry with the same request_id.");
+    if (now - quote.checkedAt > 60_000) throw new CallError("PRICING_EXPIRED", "The preflight quote expired. Retry with the same request_id.");
     const month = monthAt(now);
     if (this.store.used(month) + quote.reservationMicros + micros(this.config.budget.fixedMonthlyUsd) > micros(this.config.budget.monthlyUsd)) throw new CallError("BUDGET_EXHAUSTED", "The monthly budget cannot cover this call's maximum allowance, existing charges and outstanding reservations.");
     const task: Task = { id: crypto.randomUUID(), requestId: requestHash, hash, input, to, duration, created: now, expires: now + RETENTION, month, telephone: "pending", outcome: "pending", cancelRequested: false, nextCheck: now, attempts: 0, reservationMicros: quote.reservationMicros };
@@ -58,7 +58,7 @@ export class CallEngine {
   private async dispatch(id: string) {
     const task = this.require(id);
     if (task.telephone !== "pending") return;
-    if (this.now() - task.created > 60_000 || Date.parse(this.config.budget.expiresAt) <= this.now()) {
+    if (this.now() - task.created > 60_000) {
       task.telephone = "not_dispatched"; task.outcome = "failed";
       task.twilioCostMicros = 0; task.elevenCostMicros = 0; task.nextCheck = task.expires;
       task.lastError = { code: "DISPATCH_EXPIRED", message: "Dispatch did not begin within the 60-second quote window. No call was placed.", retryable: false };

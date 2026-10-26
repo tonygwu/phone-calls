@@ -70,7 +70,6 @@ export class LiveProviders implements Providers {
   async preflight(to: string, duration: number, now: number): Promise<Quote> {
     const c = this.c;
     secret(this.env, "ELEVENLABS_WEBHOOK_SECRET");
-    assert(Date.parse(c.budget.verifiedAt) <= now && Date.parse(c.budget.expiresAt) > now && Date.parse(c.budget.expiresAt) - Date.parse(c.budget.verifiedAt) <= 86_400_000, "PRICING_UNKNOWN", "The cost allowance needs a current verified quote with at most 24 hours validity.");
     const [agent, phone, account, number, subscription, balance, pricing] = await Promise.all([
       this.eleven(`/v1/convai/agents/${encodeURIComponent(c.elevenAgentId)}`, z.record(z.string(), z.unknown())),
       this.eleven(`/v1/convai/phone-numbers/${encodeURIComponent(c.elevenPhoneId)}`, z.object({ phone_number_id: z.string(), phone_number: z.string(), provider: z.literal("twilio"), assigned_agent: z.unknown() })),
