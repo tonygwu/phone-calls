@@ -1,0 +1,63 @@
+✔ allows simulation endpoints and readbacks only (0.537ms)
+✔ twelve requests, two setup failures, pending and unknown attempts stop submission (0.177ms)
+✔ test creation is explicitly a simulation with mocked tools and no seeded agent speech (0.2625ms)
+✔ scores complete control and preserves exact billed telemetry (3.644875ms)
+✔ wrong served model and host sequence remain explicit protocol failures (0.824208ms)
+✔ missing prices, credits, model and workspace identities fail loudly (0.842125ms)
+✔ host case and punctuation normalize but words do not (0.393459ms)
+✔ readback accepts provider defaults but rejects changed requested fields (0.065917ms)
+✔ billing survives model telemetry failure without leaking billing IDs or inventing zero (0.651333ms)
+✖ provider content failure and cancellation cannot count as successful arms (0.561ms)
+✖ incomplete billing retains every valid field while failing completeness (0.186458ms)
+ℹ tests 11
+ℹ suites 0
+ℹ pass 9
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 127.316208
+
+✖ failing tests:
+
+test at test/conversation-simulate.test.mjs:54:1
+✖ provider content failure and cancellation cannot count as successful arms (0.561ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  true !== false
+  
+      at TestContext.<anonymous> (file:///Users/tonygwu/Code/phone-calls/repo-1/test/conversation-simulate.test.mjs:57:52)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: true,
+    expected: false,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test/conversation-simulate.test.mjs:60:1
+✖ incomplete billing retains every valid field while failing completeness (0.186458ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  null !== 120
+  
+      at TestContext.<anonymous> (file:///Users/tonygwu/Code/phone-calls/repo-1/test/conversation-simulate.test.mjs:61:74)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: null,
+    expected: 120,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

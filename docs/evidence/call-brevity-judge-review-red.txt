@@ -1,0 +1,152 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - import "./test/data" without a file extension (vitest.config.ts:4:21). Add the file extension
+  - import "./test/runtime-provider" without a file extension (vitest.config.ts:5:33). Add the file extension
+  - import "./data" without a file extension (test/runtime-provider.ts:1:21). Add the file extension
+  - import "../src/config" without a file extension (test/data.ts:1:29). Add the file extension
+  - import "../src/contracts" without a file extension (test/data.ts:2:33). Add the file extension
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.12 /Users/tonygwu/Code/phone-calls/repo-1
+
+ ❯ test/conversation-judge.test.ts (18 tests | 6 failed) 8ms
+     ✓ reproduces the captured cancellation failure 3ms
+     ✓ accepts a short conversation that completes the same task 0ms
+     ✓ rejects a plausible short conversation that never hangs up 0ms
+     ✓ rejects unexpected transcript and tool parameter shapes 1ms
+     ✓ allows requested identifiers but rejects unsolicited repetition 0ms
+     ✓ preserves the full verbatim live reminder exemption 0ms
+     ✓ rejects details before disclosures 1ms
+     ✓ rejects an unauthorized deposit 0ms
+     ✓ rejects a fabricated identifier 0ms
+     ✓ a request permits one phone delivery, not repeated readings 0ms
+     ✓ does not exempt unrelated speech wrapped around an exact message 0ms
+     × consumes a request once across consecutive agent turns 2ms
+     × rejects repeated names within a requested answer 0ms
+     × counts phone numbers spoken as individual digits 1ms
+     × rejects repeated alternate times 0ms
+     × rejects cancellation conversations without the purpose or name 0ms
+     ✓ requires complete voicemail delivery after a beep 0ms
+     × rejects explicit unexecuted end_call and speech after termination 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/conversation-judge.test.ts > literal conversation checks > consumes a request once across consecutive agent turns
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/conversation-judge.test.ts:79:104
+     77|     changed[3].message = "202-555-0148.";
+     78|     changed.splice(4, 0, { role: "agent", message: "202-555-0148." });
+     79|     expect(judgeConversation(changed, scenario).checks.find(c => c.id …
+       |                                                                                                        ^
+     80|   });
+     81|   it("rejects repeated names within a requested answer", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  test/conversation-judge.test.ts > literal conversation checks > rejects repeated names within a requested answer
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/conversation-judge.test.ts:84:103
+     82|     const changed = structuredClone(concise);
+     83|     changed[3].message = "Maya Chen, Maya Chen, Maya Chen.";
+     84|     expect(judgeConversation(changed, scenario).checks.find(c => c.id …
+       |                                                                                                       ^
+     85|   });
+     86|   it("counts phone numbers spoken as individual digits", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  test/conversation-judge.test.ts > literal conversation checks > counts phone numbers spoken as individual digits
+AssertionError: expected +0 to be 2 // Object.is equality
+
+- Expected
++ Received
+
+- 2
++ 0
+
+ ❯ test/conversation-judge.test.ts:90:72
+     88|     changed[3].message = "Two oh two, five five five, zero one four ei…
+     89|     changed[5].message = "Two zero two, five five five, zero one four …
+     90|     expect(judgeConversation(changed, scenario).metrics.phoneMentions)…
+       |                                                                        ^
+     91|     expect(judgeConversation(changed, scenario).passed).toBe(false);
+     92|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  test/conversation-judge.test.ts > literal conversation checks > rejects repeated alternate times
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/conversation-judge.test.ts:97:103
+     95|     changed[3].message = "5:45 or 6:00.";
+     96|     changed[5].message = "5:45 or 6:00.";
+     97|     expect(judgeConversation(changed, scenario).checks.find(c => c.id …
+       |                                                                                                       ^
+     98|   });
+     99|   it("rejects cancellation conversations without the purpose or name",…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  test/conversation-judge.test.ts > literal conversation checks > rejects cancellation conversations without the purpose or name
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/conversation-judge.test.ts:103:57
+    101|     changed[1].message = "This is an automated assistant; this call is…
+    102|     changed[3].message = "Hello.";
+    103|     expect(judgeConversation(changed, scenario).passed).toBe(false);
+       |                                                         ^
+    104|   });
+    105|   it("requires complete voicemail delivery after a beep", () => {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  test/conversation-judge.test.ts > literal conversation checks > rejects explicit unexecuted end_call and speech after termination
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ test/conversation-judge.test.ts:113:60
+    111|     const unexecuted = structuredClone(concise);
+    112|     Object.assign(unexecuted.at(-1)!.tool_calls![0], { tool_has_been_c…
+    113|     expect(judgeConversation(unexecuted, scenario).passed).toBe(false);
+       |                                                            ^
+    114|     expect(judgeConversation([...concise, { role: "user", message: "Wa…
+    115|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 12 passed (18)
+   Start at  16:13:42
+   Duration  622ms (transform 159ms, setup 0ms, import 417ms, tests 8ms, environment 0ms)
+

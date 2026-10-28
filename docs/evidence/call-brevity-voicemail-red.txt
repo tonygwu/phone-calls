@@ -1,0 +1,78 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - import "./test/data" without a file extension (vitest.config.ts:4:21). Add the file extension
+  - import "./test/runtime-provider" without a file extension (vitest.config.ts:5:33). Add the file extension
+  - import "../src/config" without a file extension (test/data.ts:1:29). Add the file extension
+  - import "./data" without a file extension (test/runtime-provider.ts:1:21). Add the file extension
+  - import "../src/contracts" without a file extension (test/data.ts:2:33). Add the file extension
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.12 /Users/tonygwu/Code/phone-calls/repo-1
+
+ ❯ test/conversation-judge.test.ts (22 tests | 2 failed) 13ms
+     ✓ reproduces the captured cancellation failure 3ms
+     ✓ accepts a short conversation that completes the same task 1ms
+     ✓ rejects a plausible short conversation that never hangs up 0ms
+     ✓ rejects unexpected transcript and tool parameter shapes 0ms
+     ✓ allows requested identifiers but rejects unsolicited repetition 1ms
+     ✓ preserves the full verbatim live reminder exemption 0ms
+     ✓ rejects details before disclosures 0ms
+     ✓ rejects an unauthorized deposit 0ms
+     ✓ rejects an unauthorized action in a longer sentence 1ms
+     ✓ rejects a fabricated identifier 1ms
+     ✓ a request permits one phone delivery, not repeated readings 0ms
+     ✓ does not exempt unrelated speech wrapped around an exact message 0ms
+     ✓ consumes a request once across consecutive agent turns 0ms
+     ✓ rejects repeated names within a requested answer 0ms
+     ✓ counts phone numbers spoken as individual digits 0ms
+     ✓ rejects repeated alternate times 0ms
+     ✓ rejects cancellation conversations without the purpose or name 0ms
+     ✓ requires complete voicemail delivery after a beep 1ms
+     × preserves exact supplied voicemail after Leave your message. 2ms
+     × preserves exact supplied voicemail after You have reached our answering machine. 1ms
+     ✓ preserves exact supplied voicemail after Leave a message after the beep. 0ms
+     ✓ rejects explicit unexecuted end_call and speech after termination 1ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/conversation-judge.test.ts > literal conversation checks > preserves exact supplied voicemail after Leave your message.
+ FAIL  test/conversation-judge.test.ts > literal conversation checks > preserves exact supplied voicemail after You have reached our answering machine.
+AssertionError: expected [ { id: 'full_date', …(2) }, …(3) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   {
++     "details": "1 dates with year; unsolicited at turns 1",
++     "id": "full_date",
++     "passed": false,
++   },
++   {
++     "details": "name at transcript turn 1",
++     "id": "fact_repetition",
++     "passed": false,
++   },
++   {
++     "details": "Closing must be one sentence except a verbatim reminder or voicemail.",
++     "id": "closing_sentence",
++     "passed": false,
++   },
++   {
++     "details": "After a machine greeting, the exact supplied voicemail must be delivered once.",
++     "id": "verbatim_voicemail",
++     "passed": false,
++   },
++ ]
+
+ ❯ test/conversation-judge.test.ts:114:50
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 20 passed (22)
+   Start at  16:16:19
+   Duration  659ms (transform 167ms, setup 0ms, import 428ms, tests 13ms, environment 0ms)
+

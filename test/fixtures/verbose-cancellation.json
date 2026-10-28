@@ -1,0 +1,116 @@
+[
+  {
+    "role": "user",
+    "message": "Hello, this is Cedar Table.",
+    "time_in_call_secs": 0,
+    "tool_calls": [],
+    "tool_results": []
+  },
+  {
+    "role": "agent",
+    "message": "Hello, this is an automated assistant calling on behalf of Maya Chen. This call is being recorded. I am calling to cancel Maya Chen's dinner reservation at Cedar Table Bistro for Thursday, October 29, 2026, at 6:15 PM. The reservation may also be listed at 5:45 PM or 6:00 PM under the name Maya Chen or the phone number 202-555-0148. Could you please confirm the cancellation of all such entries?",
+    "time_in_call_secs": 3,
+    "tool_calls": [],
+    "tool_results": []
+  },
+  {
+    "role": "user",
+    "message": "Cancellation, um, can I get the name of the reservation?",
+    "time_in_call_secs": 30,
+    "tool_calls": [],
+    "tool_results": []
+  },
+  {
+    "role": "agent",
+    "message": "The reservation is under the name Maya Chen. The reservation date is Thursday, October 29, 2026, at 6:15 PM, originally booked for 5:45 PM. The booking was made from the phone number 202-555-0148. Maya's plans changed, so we need to cancel all entries matching these details. Could you please check and confirm the cancellation?",
+    "time_in_call_secs": 36,
+    "tool_calls": [],
+    "tool_results": []
+  },
+  {
+    "role": "user",
+    "message": "Yeah, it's already canceled. I already cancel it.",
+    "time_in_call_secs": 57,
+    "tool_calls": [],
+    "tool_results": []
+  },
+  {
+    "role": "agent",
+    "message": "Thank you for confirming the cancellation. Could you please check if there are any other reservations under the name Maya Chen or the phone number 202-555-0148 for October 29, 2026, at 5:45 PM, 6:00 PM, or 6:15 PM? If any remain, please cancel those as well.",
+    "time_in_call_secs": 64,
+    "tool_calls": [],
+    "tool_results": []
+  },
+  {
+    "role": "user",
+    "message": "Okay.",
+    "time_in_call_secs": 82,
+    "tool_calls": [],
+    "tool_results": []
+  },
+  {
+    "role": "agent",
+    "message": "Is there any other reservation under Maya Chen or the phone number 202-555-0148 for October 29, 2026, at 5:45 PM, 6:00 PM, or 6:15 PM that still needs to be canceled?",
+    "time_in_call_secs": 83,
+    "tool_calls": [],
+    "tool_results": []
+  },
+  {
+    "role": "user",
+    "message": "No, I don't have any other, uh, reservation.",
+    "time_in_call_secs": 97,
+    "tool_calls": [],
+    "tool_results": []
+  },
+  {
+    "role": "agent",
+    "message": "Thank you for your help. I have confirmed that all reservations for Maya Chen on Thursday, October 29, 2026, have been canceled. Goodbye.",
+    "time_in_call_secs": 101,
+    "tool_calls": [],
+    "tool_results": []
+  },
+  {
+    "role": "agent",
+    "message": null,
+    "time_in_call_secs": 102,
+    "tool_calls": [
+      {
+        "type": "system",
+        "request_id": "synthetic-end-call",
+        "tool_name": "end_call",
+        "tool_id": null,
+        "params_as_json": "{\"reason\":\"Reservation cancellation confirmed\",\"system__message_to_speak\":\"Thank you for your help. I have confirmed that all reservations for Maya Chen on Thursday, October 29, 2026, have been canceled. Goodbye.\"}",
+        "tool_has_been_called": true,
+        "tool_details": null
+      }
+    ],
+    "tool_results": []
+  },
+  {
+    "role": "agent",
+    "message": null,
+    "time_in_call_secs": 110,
+    "tool_calls": [],
+    "tool_results": [
+      {
+        "request_id": "synthetic-end-call",
+        "tool_name": "end_call",
+        "result_value": "{\"result_type\":\"end_call_success\",\"status\":\"success\",\"reason\":\"Reservation cancellation confirmed\",\"message\":null}",
+        "is_error": false,
+        "is_blocked": false,
+        "tool_has_been_called": true,
+        "tool_latency_secs": 0.5012535550049506,
+        "error_type": "",
+        "raw_error_message": "",
+        "dynamic_variable_updates": [],
+        "type": "system",
+        "result": {
+          "result_type": "end_call_success",
+          "status": "success",
+          "reason": "Reservation cancellation confirmed",
+          "message": null
+        }
+      }
+    ]
+  }
+]
