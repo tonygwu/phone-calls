@@ -68,14 +68,23 @@ export function agentDefinition(voiceId: string) {
 }
 
 // Hash the provider configuration so workflows and extra tools cannot silently
-// circumvent approved controls. ElevenLabs may add null analysis metadata to an
-// existing agent response; only that known empty default is equivalent to absence.
+// circumvent approved controls. Treat only these observed provider defaults as
+// absent. Unknown fields and non-default values remain part of the approved hash.
 export async function agentHash(agent: Record<string, unknown>) {
-  const platformSettings = structuredClone(agent.platform_settings) as { data_collection: Record<string, Record<string, unknown>> };
+  const conversationConfig = structuredClone(agent.conversation_config) as { asr?: { keyterm_libraries?: unknown } };
+  const platformSettings = structuredClone(agent.platform_settings) as {
+    data_collection: Record<string, Record<string, unknown>>;
+    widget?: { transcript_speech_sync_enabled?: unknown };
+  };
+  // An empty list adds no speech-recognition keyterm libraries. The widget flag
+  // synchronizes displayed text with audio and does not affect telephone calls.
+  const libraries = conversationConfig.asr?.keyterm_libraries;
+  if (Array.isArray(libraries) && libraries.length === 0) delete conversationConfig.asr!.keyterm_libraries;
+  if (platformSettings.widget?.transcript_speech_sync_enabled === true) delete platformSettings.widget.transcript_speech_sync_enabled;
   for (const field of Object.values(platformSettings.data_collection)) {
     if (field.non_sensitive_value === null) delete field.non_sensitive_value;
   }
-  return digest(canonical({ conversation_config: agent.conversation_config, platform_settings: platformSettings, workflow: agent.workflow ?? null }));
+  return digest(canonical({ conversation_config: conversationConfig, platform_settings: platformSettings, workflow: agent.workflow ?? null }));
 }
 
 export function dispatchBody(task: Task, c: Config) {
