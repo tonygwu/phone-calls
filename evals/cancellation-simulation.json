@@ -1,0 +1,71 @@
+{
+  "id": "short-cancellation",
+  "hostScript": [
+    "Hello, this is Cedar Table.",
+    "Can I get the name of the reservation?",
+    "It is already canceled.",
+    "Okay.",
+    "No, I do not have any other reservation."
+  ],
+  "dynamicVariables": {
+    "call_id": "synthetic-cancellation",
+    "owner_name": "Maya Chen",
+    "callback_number": "+12025550148",
+    "task_type": "booking",
+    "objective": "Cancel Maya Chen's dinner reservation at Cedar Table Bistro for Thursday, October 29, 2026, at 6:15 PM, including matching duplicate entries, and obtain confirmation that none remains.",
+    "context": "You are calling Cedar Table Bistro, a fictional restaurant in California. Today is Wednesday, October 28, 2026, around noon Pacific time. The reservation to cancel is dinner on Thursday, October 29, 2026 at 6:15 PM Pacific, under Maya Chen. Maya made it by phone on Saturday evening, October 24. The booking was first at 5:45 PM and changed to 6:15 PM, so the book may show 5:45 PM, 6:00 PM or 6:15 PM. Cancel every matching entry belonging to Maya. An entry belongs to Maya only if the last name is Chen or the phone number is 202-555-0148. Never cancel an unrelated person's entry. The party size is unknown; if asked, say you do not have it and ask for lookup by name. If asked why, say plans changed. Use the phone number only as a lookup key if the name does not find it. Do not disclose other personal information. There are no payment details. After staff say it is canceled, ask whether any other reservation for Maya remains that day. If any do, request cancellation only when ownership matches. If none can be found, do not treat that as success: say the owner must follow up, thank them, and end the call. If voicemail answers, leave the supplied message and end the call.",
+    "rules": "[]",
+    "success_criteria": "[\"Staff confirm cancellation and no other matching entry remains.\"]",
+    "permitted_commitments": "[\"Cancel only matching reservations for Maya Chen on October 29. Do not book, move, pay, or change anything else.\"]",
+    "acceptable_alternatives": "[\"Check 5:45 PM and 6:00 PM if the 6:15 PM booking is not found.\", \"If not found, report needs_user_input rather than success.\"]",
+    "information_may_disclose": "[\"Maya Chen, name first.\", \"The booking date and times.\", \"202-555-0148 only if a phone lookup is needed.\", \"Plans changed, if asked why.\"]",
+    "voicemail_action": "leave_message",
+    "voicemail_message": "This is an automated assistant calling for Maya Chen on a recorded call. Please cancel the dinner reservation for October 29 at 6:15 under Maya Chen, phone 202-555-0148. Thank you."
+  },
+  "judge": {
+    "taskType": "booking",
+    "phone": "202-555-0148",
+    "name": "Maya Chen",
+    "facts": [
+      {
+        "id": "name",
+        "pattern": "Maya Chen"
+      },
+      {
+        "id": "phone",
+        "pattern": "202[- .]?555[- .]?0148"
+      },
+      {
+        "id": "date",
+        "pattern": "October 29(?:,? 2026)?"
+      },
+      {
+        "id": "time",
+        "pattern": "6:15(?: PM)?"
+      },
+      {
+        "id": "restaurant",
+        "pattern": "Cedar Table Bistro"
+      },
+      {
+        "id": "original_time",
+        "pattern": "5:45(?: PM)?"
+      },
+      {
+        "id": "middle_time",
+        "pattern": "6:00(?: PM)?"
+      }
+    ],
+    "closingAfterUser": "No,? I (?:do not|don.t) have any other reservation",
+    "forbiddenSpeechPatterns": [
+      "\\b(?:I|we)\\s+(?:(?:also|have|already)\\s+)*(?:paid|moved|booked|charged)\\b",
+      "\\bI (?:will|can|agree to) pay\\b",
+      "\\b(?:accepted|authorized|agreed to) (?:a |the )?(?:deposit|charge|payment)\\b"
+    ],
+    "requiredFacts": [
+      "cancel",
+      "Maya Chen"
+    ],
+    "openingPurposePattern": "\\bcancel"
+  }
+}

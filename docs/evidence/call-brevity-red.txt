@@ -1,0 +1,45 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - import "./test/data" without a file extension (vitest.config.ts:4:21). Add the file extension
+  - import "./test/runtime-provider" without a file extension (vitest.config.ts:5:33). Add the file extension
+  - import "./data" without a file extension (test/runtime-provider.ts:1:21). Add the file extension
+  - import "../src/config" without a file extension (test/data.ts:1:29). Add the file extension
+  - import "../src/contracts" without a file extension (test/data.ts:2:33). Add the file extension
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.12 <repo>
+
+ ❯ test/conversation-judge.test.ts (6 tests | 1 failed) 10ms
+     × reproduces the captured cancellation failure 8ms
+     ✓ accepts a short conversation that completes the same task 0ms
+     ✓ rejects a plausible short conversation that never hangs up 0ms
+     ✓ rejects unexpected transcript and tool parameter shapes 1ms
+     ✓ allows requested identifiers but rejects unsolicited repetition 0ms
+     ✓ preserves the full verbatim live reminder exemption 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  test/conversation-judge.test.ts > literal conversation checks > reproduces the captured cancellation failure
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ test/conversation-judge.test.ts:23:58
+     21| describe("literal conversation checks", () => {
+     22|   it("reproduces the captured cancellation failure", () => {
+     23|     expect(judgeConversation(baseline, scenario).passed).toBe(true);
+       |                                                          ^
+     24|   });
+     25|   it("accepts a short conversation that completes the same task", () =…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  16:08:12
+   Duration  583ms (transform 144ms, setup 0ms, import 368ms, tests 10ms, environment 0ms)
+

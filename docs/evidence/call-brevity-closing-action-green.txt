@@ -1,0 +1,17 @@
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - import "./test/data" without a file extension (vitest.config.ts:4:21). Add the file extension
+  - import "./test/runtime-provider" without a file extension (vitest.config.ts:5:33). Add the file extension
+  - import "../src/config" without a file extension (test/data.ts:1:29). Add the file extension
+  - import "./data" without a file extension (test/runtime-provider.ts:1:21). Add the file extension
+  - import "../src/contracts" without a file extension (test/data.ts:2:33). Add the file extension
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.12 <repo>
+
+ ✓ test/conversation-judge.test.ts (24 tests) 8ms
+
+ Test Files  1 passed (1)
+      Tests  24 passed (24)
+   Start at  16:27:35
+   Duration  548ms (transform 141ms, setup 0ms, import 362ms, tests 8ms, environment 0ms)
+

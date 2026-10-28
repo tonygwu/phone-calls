@@ -1,0 +1,121 @@
+{
+  "passed": false,
+  "checks": [
+    {
+      "id": "has_agent_speech",
+      "passed": true,
+      "details": "5 spoken turns"
+    },
+    {
+      "id": "disclosures",
+      "passed": true,
+      "details": "Opener must identify automation and recording."
+    },
+    {
+      "id": "disclosures_first",
+      "passed": true,
+      "details": "Automation and recording disclosures must precede substantive task details."
+    },
+    {
+      "id": "opener_sentences",
+      "passed": false,
+      "details": "3 purpose sentences after disclosures; maximum 2"
+    },
+    {
+      "id": "opening_purpose",
+      "passed": true,
+      "details": "The opener must state the task's purpose after the disclosures."
+    },
+    {
+      "id": "turn_words",
+      "passed": false,
+      "details": "Words by turn: 70, 54, 46, 31, 23; maximum 35 except exact supplied message"
+    },
+    {
+      "id": "phone_repetition",
+      "passed": false,
+      "details": "4 total phone mentions, 4 without a number request; maximum 1 unsolicited and 1 per explicit request"
+    },
+    {
+      "id": "full_date",
+      "passed": false,
+      "details": "5 dates with year; unsolicited at turns 1, 3, 5, 7, 9"
+    },
+    {
+      "id": "fact_repetition",
+      "passed": false,
+      "details": "name at transcript turn 1; phone at transcript turn 3; date at transcript turn 3; time at transcript turn 3; original_time at transcript turn 3; name at transcript turn 5; phone at transcript turn 5; date at transcript turn 5; time at transcript turn 5; original_time at transcript turn 5; middle_time at transcript turn 5; name at transcript turn 7; phone at transcript turn 7; date at transcript turn 7; time at transcript turn 7; original_time at transcript turn 7; middle_time at transcript turn 7; name at transcript turn 9; date at transcript turn 9"
+    },
+    {
+      "id": "acknowledgement_clarifier",
+      "passed": false,
+      "details": "1 replies to a bare acknowledgement exceed 10 words, omit a question, or repeat the previous turn"
+    },
+    {
+      "id": "end_call",
+      "passed": true,
+      "details": "1 end_call invocations; it must execute and end the conversation"
+    },
+    {
+      "id": "closing_sentence",
+      "passed": false,
+      "details": "Closing must be one sentence except a verbatim reminder or voicemail."
+    },
+    {
+      "id": "close_on_success",
+      "passed": false,
+      "details": "After the scripted success response, the next agent action must be end_call."
+    },
+    {
+      "id": "content_cancel",
+      "passed": true,
+      "details": "Required spoken content: cancel"
+    },
+    {
+      "id": "content_Maya Chen",
+      "passed": true,
+      "details": "Required spoken content: Maya Chen"
+    },
+    {
+      "id": "no_invented_confirmation",
+      "passed": true,
+      "details": "0 confirmation identifiers not supplied by the recipient"
+    },
+    {
+      "id": "authority_\\b(?:I|we)\\s+(?:(?:also|have|already)\\s+)*(?:paid|moved|booked|charged)\\b",
+      "passed": true,
+      "details": "Speech must not claim a commitment outside this scenario's permission."
+    },
+    {
+      "id": "authority_\\bI (?:will|can|agree to) pay\\b",
+      "passed": true,
+      "details": "Speech must not claim a commitment outside this scenario's permission."
+    },
+    {
+      "id": "authority_\\b(?:accepted|authorized|agreed to) (?:a |the )?(?:deposit|charge|payment)\\b",
+      "passed": true,
+      "details": "Speech must not claim a commitment outside this scenario's permission."
+    }
+  ],
+  "metrics": {
+    "agentWordsPerTurn": [
+      70,
+      54,
+      46,
+      31,
+      23
+    ],
+    "openerWords": 70,
+    "phoneMentions": 4,
+    "fullDates": 5,
+    "factMentions": {
+      "name": 7,
+      "phone": 4,
+      "date": 5,
+      "time": 4,
+      "restaurant": 1,
+      "original_time": 4,
+      "middle_time": 3
+    }
+  }
+}
