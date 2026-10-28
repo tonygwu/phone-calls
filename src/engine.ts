@@ -60,6 +60,12 @@ export class CallEngine {
       this.store.put(current);
     } catch (error) {
       const current = this.require(id);
+      if (error instanceof CallError && error.code === "DISPATCH_NOT_ACCEPTED" && !current.callSid && !current.conversationId && current.telephone === "dispatching") {
+        current.telephone = "not_dispatched"; current.outcome = "failed";
+        current.twilioCostMicros = 0; current.elevenCostMicros = 0;
+        current.lastError = publicError(error); current.nextCheck = current.expires;
+        this.store.put(current); return;
+      }
       if (!terminal.has(current.telephone) && !current.callSid) current.telephone = "dispatch_unknown";
       current.lastError = publicError(error);
       current.nextCheck = this.now() + 15_000;
@@ -152,6 +158,14 @@ export class CallEngine {
     if (!id) throw new CallError("CALLBACK_UNCORRELATED", "Callback has no durable task correlation.", false, 409);
     const task = this.require(id);
     correlate(task, c, this.config);
+    // A correlated provider identity overrides an earlier no-dispatch conclusion,
+    // including a callback arriving after an authentication rejection or cancel.
+    // Resume observation/termination of that call; never send another outbound POST.
+    if (task.telephone === "not_dispatched") {
+      task.telephone = "dispatch_unknown"; task.outcome = "pending";
+      delete task.twilioCostMicros; delete task.elevenCostMicros;
+      delete task.lastError;
+    }
     applyConversation(task, c, observation);
     task.nextCheck = this.now();
     this.store.put(task); // persisted before webhook acknowledgement

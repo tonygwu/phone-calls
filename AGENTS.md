@@ -28,3 +28,5 @@ needed and restrict the resulting file to mode 600. Existing authentication
 or a checkout role does not authorize deployment, provisioning, scheduled
 work or real calls. Follow the user's authorization and the operational
 rules in `docs/OPERATIONS.md` and `docs/DEPLOYMENT.md`.
+
+`npm test` includes the Worker suite and isolated operational tests. `test/runtime-provider.ts` supplies synthetic responses for real Durable Object route tests; unexpected hosts and endpoints fail without network fallback.

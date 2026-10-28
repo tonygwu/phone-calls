@@ -2,8 +2,9 @@ import { describe, it, expect } from "vitest";
 import { env, runInDurableObject } from "cloudflare:test";
 import { CallEngine } from "../src/engine";
 import { SqlStore } from "../src/store";
+import type { Env } from "../src/config";
 import { DAY, RETENTION, startSchema } from "../src/contracts";
-import { applyConversation, applyTwilio, correlate } from "../src/providers";
+import { applyConversation, applyTwilio, correlate, LiveProviders } from "../src/providers";
 import { dispatchBody } from "../src/agent";
 import { cfg, input, NOW, fakeProviders, conversation } from "./fixtures";
 
@@ -163,3 +164,59 @@ describe("retention, pagination and conversation outcomes", () => {
     expect(body.conversation_initiation_client_data.conversation_config_override).toEqual({ conversation: { max_duration_seconds: 180 } });
   }));
 });
+
+describe("reliability regressions", () => {
+  it.each([401, 403])("reports a dispatch rejected by provider authentication HTTP %s", async status => scenario(async (e, p, advance) => {
+    const provider = new LiveProviders({ ELEVENLABS_API_KEY: "synthetic" } as Env, cfg, async () => new Response("private provider body", { status }));
+    p.dispatch.mockImplementation(t => provider.dispatch(t));
+    const id = idOf(await e.start(input)); await e.tick();
+    expect(e.require(id).telephone).toBe("not_dispatched");
+    expect(e.require(id).lastError?.code).toBe("DISPATCH_NOT_ACCEPTED");
+    expect(p.dispatch).toHaveBeenCalledTimes(1);
+    advance(RETENTION); await e.tick();
+    await expect(e.start({ ...input, request_id: "after-rejection" })).resolves.toMatchObject({ telephone_status: "pending" });
+  }));
+  it.each([400, 408, 429, 500])("preserves uncertain dispatch for HTTP %s", async status => scenario(async (e, p) => {
+    const provider = new LiveProviders({ ELEVENLABS_API_KEY: "synthetic" } as Env, cfg, async () => new Response(null, { status }));
+    p.dispatch.mockImplementation(t => provider.dispatch(t));
+    const id = idOf(await e.start(input)); await e.tick();
+    expect(e.require(id).telephone).toBe("dispatch_unknown");
+  }));
+  it("preserves callback evidence despite a conflicting authentication rejection", async () => scenario(async (e, p) => {
+    const provider = new LiveProviders({ ELEVENLABS_API_KEY: "synthetic" } as Env, cfg, async () => new Response(null, { status: 401 }));
+    p.dispatch.mockImplementation(async t => {
+      p.conversation.mockResolvedValue(conversation(t)); await e.callback("conv_test");
+      return provider.dispatch(t);
+    });
+    const id = idOf(await e.start(input)); await e.tick();
+    expect(e.require(id).callSid).toBeDefined();
+    expect(e.require(id).telephone).not.toBe("not_dispatched");
+  }));
+  it("settles a completed conversation containing a tool-only turn without message text", async () => scenario(async (e, p) => {
+    const id = idOf(await e.start(input)); await e.tick();
+    const c = conversation(e.require(id));
+    const raw = { ...c, transcript: [...c.transcript, { role: "agent", time_in_call_secs: 20, tool_calls: [{ tool_name: "end_call" }] }] };
+    const provider = new LiveProviders({ ELEVENLABS_API_KEY: "synthetic" } as Env, cfg, async () => Response.json(raw));
+    p.conversation.mockImplementation(id => provider.conversation(id));
+    p.call.mockResolvedValue({ ...(await p.call(e.require(id))), status: "completed", price: "-0.014" });
+    await e.reconcile(id);
+    expect(e.require(id).lastError).toBeUndefined();
+    expect(e.require(id).transcript?.at(-1)?.message).toBeNull();
+    expect(e.view(e.require(id)).cost).toMatchObject({ twilio_usd: 0.014, elevenlabs_total_fiat_usd: 0.05 });
+    const malformed = { ...raw, transcript: [{ role: "agent", time_in_call_secs: 0, message: 42 }] };
+    const bad = new LiveProviders({ ELEVENLABS_API_KEY: "synthetic" } as Env, cfg, async () => Response.json(malformed));
+    await expect(bad.conversation("conv_test")).rejects.toMatchObject({ code: "PROVIDER_SCHEMA" });
+  }));
+});
+
+it("resumes termination when a late callback proves a previously rejected task has a real call", async () => scenario(async (e, p, advance) => {
+  const id = idOf(await e.start(input));
+  const rejected = e.require(id); rejected.telephone = "not_dispatched"; rejected.outcome = "failed"; rejected.twilioCostMicros = 0; rejected.elevenCostMicros = 0; rejected.cancelRequested = true; rejected.nextCheck = rejected.expires; e.store.put(rejected);
+  const c = conversation(rejected); c.status = "in-progress"; c.metadata.cost_fiat = null; p.conversation.mockResolvedValue(c);
+  await e.callback(c.conversation_id);
+  expect(e.require(id).telephone).toBe("dispatch_unknown");
+  expect(e.require(id).twilioCostMicros).toBeUndefined();
+  await e.reconcile(id);
+  expect(p.terminate).toHaveBeenCalledTimes(1);
+  expect(p.dispatch).not.toHaveBeenCalled();
+}));
