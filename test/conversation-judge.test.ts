@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import baseline from "./fixtures/verbose-cancellation.json";
+import accepted from "./fixtures/short-cancellation-accepted.json";
 import scenarios from "../evals/scenarios.json";
 import { judgeConversation, type JudgeScenario } from "./conversation-judge";
 
@@ -31,6 +32,11 @@ describe("literal conversation checks", () => {
   it("accepts a short conversation that completes the same task", () => {
     const result = judgeConversation(concise, scenario);
     expect(result.checks.filter(c => !c.passed)).toEqual([]);
+  });
+  it("accepts the independently generated GPT-4.1 transcript", () => {
+    const result = judgeConversation(accepted, scenario);
+    expect(result.checks.filter(c => !c.passed)).toEqual([]);
+    expect(result.metrics.agentWordsPerTurn).toEqual([25, 2, 8, 3, 6]);
   });
   it("rejects a plausible short conversation that never hangs up", () => {
     expect(judgeConversation(concise.slice(0, -1), scenario).checks.find(c => c.id === "end_call")?.passed).toBe(false);
