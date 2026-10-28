@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { CallError, terminal, type Task, type PhoneStatus, type TranscriptTurn } from "./contracts";
+import { CallError, terminal, type Task, type PhoneStatus } from "./contracts";
 import { type Config, type Env, secret } from "./config";
 import { dispatchBody } from "./agent";
 
@@ -7,7 +7,7 @@ const sid = z.string().regex(/^CA[0-9a-fA-F]{32}$/);
 export const dispatchResponse = z.object({ success: z.boolean(), message: z.string(), conversation_id: z.string().nullable(), callSid: sid.nullable() });
 const phoneStatus = z.enum(["queued", "ringing", "in-progress", "completed", "busy", "no-answer", "canceled", "failed"]);
 const twilioCallSchema = z.object({ sid, account_sid: z.string(), from: z.string(), to: z.string(), status: phoneStatus, price: z.string().nullable(), price_unit: z.string().nullable(), start_time: z.string().nullable(), duration: z.string().nullable() });
-const turnSchema = z.object({ role: z.enum(["user", "agent"]), message: z.string().nullable(), time_in_call_secs: z.number().nonnegative(), tool_calls: z.array(z.unknown()).nullish(), tool_results: z.array(z.unknown()).nullish() });
+const turnSchema = z.object({ role: z.enum(["user", "agent"]), message: z.string().nullish(), time_in_call_secs: z.number().nonnegative(), tool_calls: z.array(z.unknown()).nullish(), tool_results: z.array(z.unknown()).nullish() });
 export const conversationSchema = z.object({
   agent_id: z.string(), conversation_id: z.string(), user_id: z.string().nullish(),
   status: z.enum(["initiated", "in-progress", "processing", "done", "failed"]), has_audio: z.boolean(),
@@ -34,6 +34,11 @@ const numeric = (value: string, label: string) => {
 function assert(check: unknown, code: string, message: string): asserts check {
   if (!check) throw new CallError(code, message, false, 503);
 }
+class ProviderHttpError extends CallError {
+  constructor(readonly httpStatus: number) {
+    super((httpStatus >= 300 && httpStatus < 400) || httpStatus >= 500 ? "PROVIDER_UNCERTAIN" : "PROVIDER_REJECTED", `Provider returned HTTP ${httpStatus}.`, false, 502);
+  }
+}
 export class LiveProviders implements Providers {
   constructor(private env: Env, private c: Config, private fetcher: typeof fetch = fetch) {}
   private async request<S extends z.ZodType>(url: string, init: RequestInit, schema: S): Promise<z.output<S>>;
@@ -46,7 +51,7 @@ export class LiveProviders implements Providers {
     catch { throw new CallError("PROVIDER_UNCERTAIN", "Provider request timed out or transport failed. A dispatch must not be retried.", false, 502); }
     // Workers lacks redirect:"error". Never follow redirects with provider credentials.
     // A redirect after a dispatch is uncertain, so it must not release a retry.
-    if (!res.ok) throw new CallError((res.status >= 300 && res.status < 400) || res.status >= 500 ? "PROVIDER_UNCERTAIN" : "PROVIDER_REJECTED", `Provider returned HTTP ${res.status}.`, false, 502);
+    if (!res.ok) throw new ProviderHttpError(res.status);
     if (!schema) return res;
     try { return schema.parse(await res.json()); }
     catch { throw new CallError("PROVIDER_SCHEMA", "Provider response did not match the required schema. Inspect provider state before retrying.", false, 502); }
@@ -58,7 +63,16 @@ export class LiveProviders implements Providers {
     return this.request(`https://api.twilio.com${path}`, { method: body ? "POST" : "GET", headers: { Authorization: `Basic ${btoa(`${this.c.twilioAccountSid}:${secret(this.env, "TWILIO_AUTH_TOKEN")}`)}`, ...(body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}) }, ...(body ? { body: body.toString() } : {}) }, schema);
   }
   async dispatch(task: Task) {
-    return await this.eleven("/v1/convai/twilio/outbound-call", dispatchResponse, dispatchBody(task, this.c)) as z.infer<typeof dispatchResponse>;
+    try {
+      return await this.eleven("/v1/convai/twilio/outbound-call", dispatchResponse, dispatchBody(task, this.c));
+    } catch (error) {
+      // Authentication/authorization refusal means this request was not accepted.
+      // Other HTTP errors, redirects, timeouts and malformed success remain ambiguous.
+      if (error instanceof ProviderHttpError && [401, 403].includes(error.httpStatus)) {
+        throw new CallError("DISPATCH_NOT_ACCEPTED", `ElevenLabs refused call authentication (HTTP ${error.httpStatus}). No call was accepted. Repair provider credentials before requesting another call.`, false, 502);
+      }
+      throw error;
+    }
   }
   async conversation(id: string) {
     const result = await this.eleven(`/v1/convai/conversations/${encodeURIComponent(id)}`, conversationSchema) as Conversation;
@@ -108,7 +122,8 @@ export function applyConversation(task: Task, c: Conversation, observation: numb
     task.elevenCostMicros = Math.max(task.elevenCostMicros ?? 0, micros(c.metadata.cost_fiat));
   }
   if (c.status !== "done" && c.status !== "failed") return;
-  task.transcript = c.transcript as TranscriptTurn[];
+  // Tool-only turns legitimately omit message text in the provider schema.
+  task.transcript = c.transcript.map(turn => ({ ...turn, message: turn.message ?? null }));
   task.hasAudio = c.has_audio;
   task.summary = c.analysis?.transcript_summary;
   task.outcome = "unknown";
