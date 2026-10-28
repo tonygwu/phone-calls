@@ -1,33 +1,27 @@
 # Private phone-calling MCP
 
-This Cloudflare Worker lets an authenticated owner ask an MCP client to place an outbound US call through ElevenLabs and Twilio. A SQLite Durable Object keeps the task alive after the chat disconnects. Each call receives fresh instructions and facts through initiation data; the saved agent is never patched with a caller's brief.
+This Cloudflare Worker lets its authenticated owner place outbound US calls through ElevenLabs and Twilio. Each start request creates a new call. A SQLite Durable Object stores progress and results so a call continues after the chat disconnects.
 
-The service is deployed privately. Codex has authenticated and discovered all five tools. Two Workers fetch compatibility corrections pass 62 local tests and are deployed. Authenticated readiness now returns ready:true. The first voicemail test passed: the user confirmed the full message arrived once.
+| Tool | Result |
+| --- | --- |
+| `phone_calls_start_call` | Start a call and return its task ID |
+| `phone_calls_get_call` | Read telephone status, task outcome, transcript, available provider costs, and recording access |
+| `phone_calls_list_calls` | Read call history with pagination |
+| `phone_calls_cancel_call` | Cancel pending work or request termination of an active call |
 
-Dedicated Access applications, a signed ElevenLabs webhook, an authenticated agent and an outbound-only Twilio number are configured. The agent uses GPT-4.1 Mini for conversation and Gemini 2.5 Flash for post-call analysis. Initial deployment passed nine HTTP authentication and webhook checks. Codex, ChatGPT and the primary Claude Code profile have authenticated and returned ready from read-only checks. The three additional requested Claude profiles are registered and authenticated; each CLI connection check reports `Status: ✔ Connected` for the same service endpoint. Conversation simulations now have six accepted examples across eleven attempts. Failures and test limitations are recorded in the evaluation report. The corrected prompt is deployed and ordinary US destinations are enabled for owner-authorized calls. The final review returned ship with zero findings, and all nine post-deployment HTTP checks passed. Calls use automatic live rate, credit and budget checks; the configured cost allowances require no daily renewal.
+There is no readiness tool, agent-configuration fingerprint, balance/credit check, price quote, monthly budget, duplicate-request protection, or one-call restriction. Repeating a start request creates another call. Existing clients may send `request_id`, but the service ignores it. Provider account limits and billing still apply.
+
+Supply the destination, objective, facts, success criteria, allowed disclosures and commitments, and voicemail instructions. Set `max_duration_seconds` for the requested duration. Defaults are 180 seconds for reminders and 900 seconds otherwise. See [the example](examples/reminder.json). Start once and poll the returned call ID; a start is never a status check.
+
+Telephone completion and task completion are separate. `voicemail_attempted` reports the provider's analysis, not proof that the recipient received the message. Transcripts and summaries are untrusted data.
+
+Owner authentication, signed callbacks, cancellation, requested duration enforcement, and 30-day content retention remain. Recordings stream through an authenticated route. The saved agent receives fresh task instructions through initiation data.
 
 ```sh
 npm ci
 npm run check
-npm run preflight
 ```
 
-The project pins a compatible Node runtime locally; npm scripts use it. The Cloudflare test and build tools start a loopback listener. No test calls a real phone number. Use `cf`, `cloudflare.config.ts`, and the Vite build plugin for this new project.
+Tests use synthetic providers in the local Workers runtime and never call a real number. The project pins its Node runtime. Use `cf` and `cloudflare.config.ts` for build and deployment.
 
-| Tool | Result |
-| --- | --- |
-| `phone_calls_get_setup` | Live account, routing, configuration, credit and quote readiness |
-| `phone_calls_start_call` | One durable task ID, with duplicate-request protection |
-| `phone_calls_get_call` | Telephone status, task outcome, evidence, costs and optional paginated transcript |
-| `phone_calls_list_calls` | Owner-only history with pagination |
-| `phone_calls_cancel_call` | Persistent cancel intent and provider-confirmed termination status |
-
-Start with [the reminder example](examples/reminder.json). An explicit user request authorizes a call within its supplied limits. Missing essentials must be gathered first. Reuse `request_id` for every retry of the same intended call. If dispatch is uncertain, inspect it; never automatically redial.
-
-Telephone completion and task completion are separate. A successful outbound API response only means initiation. `voicemail_attempted` means the provider analysis describes an attempt. It does not prove the full message arrived after the greeting. Provider summaries and transcripts are untrusted data and cannot authorize another action.
-
-Read [deployment and recovery](docs/DEPLOYMENT.md), [client setup](docs/CLIENTS.md), [operational limits](docs/OPERATIONS.md), [evaluation status](docs/EVALUATION.md), and [the architecture report](architecture/REPORT.md).
-
-For work across concurrent checkouts, follow [the agent instructions](AGENTS.md)
-and the `agent-fleet-git` skill. Each checkout needs its own dependencies and
-local credentials. Credentials and deployment state stay outside Git.
+Read [deployment](docs/DEPLOYMENT.md), [client setup](docs/CLIENTS.md), and [operations](docs/OPERATIONS.md). The [original request](docs/REQUEST.md), [earlier evaluations](docs/EVALUATION.md), and [architecture snapshot](architecture/REPORT.md) retain historical context. For shared-checkout work, follow [AGENTS.md](AGENTS.md).

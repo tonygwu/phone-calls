@@ -1,7 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { z } from "zod";
 import { config, type Env } from "./config";
-import { CallError, cancelSchema, getSchema, listSchema, monthAt, publicError } from "./contracts";
+import { CallError, cancelSchema, getSchema, listSchema, publicError } from "./contracts";
 import { CallEngine } from "./engine";
 import { LiveProviders } from "./providers";
 import { SqlStore } from "./store";
@@ -50,15 +50,6 @@ export class CallLedger extends DurableObject<Env> {
       } else if (path === "/callback") {
         const args = z.object({ conversation_id: z.string().min(1) }).parse(body);
         await engine.callback(args.conversation_id); data = { persisted: true };
-      } else if (path === "/setup") {
-        const c = config(this.env);
-        const budget = { limit_usd: c.budget.monthlyUsd, fixed_monthly_usd: c.budget.fixedMonthlyUsd, accounted_usd: this.store.used(monthAt(Date.now())) / 1e6 };
-        try {
-          const quote = await engine.providers.preflight(c.selfNumber, 180, Date.now());
-          const active = this.store.active();
-          const remaining = c.budget.monthlyUsd - budget.fixed_monthly_usd - budget.accounted_usd;
-          data = { ready: !active && remaining >= quote.reservationMicros / 1e6, quote, budget: { ...budget, remaining_usd: remaining }, active_call_id: active?.id ?? null, caller_number: c.fromNumber, test_number: c.selfNumber, callback_number: c.callbackNumber, test_destinations_only: c.testOnly, retention_days: 30 };
-        } catch (error) { data = { ready: false, budget, issue: publicError(error), test_destinations_only: c.testOnly }; }
       } else throw new CallError("NOT_FOUND", "Unknown operation.", false, 404);
       await this.schedule();
       return Response.json({ ok: true, data });

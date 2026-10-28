@@ -2,7 +2,6 @@ import { z } from "zod";
 import { usPhone, CallError } from "./contracts";
 import type { CallLedger } from "./ledger";
 
-const dollars = z.number().finite().nonnegative();
 export const configSchema = z.strictObject({
   publicOrigin: z.url().refine(s => new URL(s).protocol === "https:" && new URL(s).origin === s),
   accessIssuer: z.url().refine(s => /^https:\/\/[a-z0-9-]+\.cloudflareaccess\.com$/.test(s)),
@@ -13,20 +12,7 @@ export const configSchema = z.strictObject({
   twilioNumberSid: z.string().regex(/^PN[a-fA-F0-9]{32}$/),
   fromNumber: usPhone,
   elevenAgentId: z.string().min(1), elevenPhoneId: z.string().min(1), voiceId: z.string().min(1),
-  agentConfigHash: z.string().regex(/^[a-f0-9]{64}$/),
-  testOnly: z.boolean(),
-  voicemailAcceptance: z.object({ confirmedAt: z.iso.datetime(), callId: z.string().uuid() }).nullable(),
-  budget: z.strictObject({
-    monthlyUsd: z.literal(10),
-    fixedMonthlyUsd: dollars.describe("Number rental, additional hosting and known taxes. Explicitly verified, never inferred as zero."),
-    additionalPerMinuteUsd: dollars.describe("Upper bound for ElevenLabs, LLM, analysis and applicable taxes beyond included subscription credits."),
-    additionalPerCallUsd: dollars,
-    elevenCreditsPerMinute: z.number().positive(),
-    source: z.string().min(10),
-    // Accepted for existing deployment configs; these timestamps do not govern calls.
-    verifiedAt: z.iso.datetime().optional(), expiresAt: z.iso.datetime().optional(),
-  }),
-}).refine(c => c.testOnly || c.voicemailAcceptance !== null, "Ordinary destinations require a confirmed voicemail acceptance record.");
+});
 export type Config = z.infer<typeof configSchema>;
 export interface Env {
   CALLS: DurableObjectNamespace<CallLedger>;

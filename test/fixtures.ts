@@ -8,9 +8,7 @@ export const cfg: Config = {
   publicOrigin: "https://calls.example.com", accessIssuer: "https://example.cloudflareaccess.com", accessAudience: "a".repeat(64),
   ownerEmail: "owner@example.com", ownerSubject: "owner-test", ownerName: "Test Owner",
   selfNumber: "+12025550123", callbackNumber: "+12025550123", fromNumber: "+14155550123",
-  twilioAccountSid: "AC" + "1".repeat(32), twilioNumberSid: "PN" + "2".repeat(32), elevenAgentId: "agent_test", elevenPhoneId: "phone_test", voiceId: "stock_voice", agentConfigHash: "a".repeat(64),
-  testOnly: true, voicemailAcceptance: null,
-  budget: { monthlyUsd: 10, fixedMonthlyUsd: 1.15, additionalPerMinuteUsd: 0.1, additionalPerCallUsd: 0.02, elevenCreditsPerMinute: 1000, verifiedAt: "2026-10-25T00:00:00Z", expiresAt: "2026-10-26T00:00:00Z", source: "Synthetic testing quote, no real money" },
+  twilioAccountSid: "AC" + "1".repeat(32), twilioNumberSid: "PN" + "2".repeat(32), elevenAgentId: "agent_test", elevenPhoneId: "phone_test", voiceId: "stock_voice",
 };
 export const input: StartInput = {
   request_id: "test-reminder-1", task_type: "reminder", recipient: "self", objective: "Leave a reminder", context: "This is a synthetic test.", success_criteria: ["One full message after the beep"], constraints: { permitted_commitments: [], acceptable_alternatives: [], information_may_disclose: ["The supplied reminder"] }, voicemail: { action: "leave_message", message: "Automated recorded test reminder: recycle tomorrow." },
@@ -26,7 +24,6 @@ export function conversation(task: Task, outcome = "voicemail_attempted"): Conve
 export function fakeProviders() {
   let captured: Task;
   const p = {
-    preflight: vi.fn(async (_to: string, _duration: number, now: number) => ({ reservationMicros: 400_000, creditsAvailable: 100000, twilioBalanceUsd: 10, twilioPerMinuteUsd: 0.014, checkedAt: now, accountSid: cfg.twilioAccountSid, agentId: cfg.elevenAgentId, model: "gpt-4.1-mini", voiceId: cfg.voiceId })),
     dispatch: vi.fn(async (task: Task) => { captured = structuredClone(task); return { success: true, message: "initiated", conversation_id: "conv_test", callSid: "CA" + "3".repeat(32) }; }),
     conversation: vi.fn(async () => conversation(captured)),
     findConversation: vi.fn(async (_task: Task): Promise<Conversation | null> => null),

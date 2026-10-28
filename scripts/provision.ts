@@ -1,21 +1,19 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { z } from "zod";
-import { agentDefinition, agentHash } from "../src/agent";
+import { agentDefinition } from "../src/agent";
 import { configSchema } from "../src/config";
-import { assertSubset } from "../src/providers";
 import { canonical, digest, usPhone } from "../src/contracts";
 
-const { twilioNumberSid: _number, fromNumber: _from, elevenAgentId: _agent, elevenPhoneId: _phone, agentConfigHash: _hash, accessAudience: _aud, ...setupFields } = configSchema.shape;
+const { twilioNumberSid: _number, fromNumber: _from, elevenAgentId: _agent, elevenPhoneId: _phone, accessAudience: _aud, ...setupFields } = configSchema.shape;
 const setupSchema = z.strictObject({ ...setupFields,
-  selectedNumber: usPhone, quotedNumberMonthlyUsd: z.number().positive(),
+  selectedNumber: usPhone,
   cloudflareAccountId: z.string().regex(/^[a-f0-9]{32}$/i),
   oauthRedirectUris: z.array(z.url()).min(1),
 });
 const mode = process.argv[2];
 if (!["prepare", "apply"].includes(mode)) throw new Error("Usage: provision.ts prepare|apply. Read docs/DEPLOYMENT.md first.");
 const setup = setupSchema.parse(JSON.parse(readFileSync("private/setup.json", "utf8")));
-if (setup.budget.fixedMonthlyUsd < setup.quotedNumberMonthlyUsd || setup.budget.fixedMonthlyUsd >= 10) throw new Error("Number and fixed hosting costs must fit the approved $10 additional budget.");
 mkdirSync("private", { recursive: true, mode: 0o700 });
 const write = (file: string, data: unknown) => writeFileSync(file, JSON.stringify(data, null, 2) + "\n", { mode: 0o600 });
 const host = new URL(setup.publicOrigin).hostname;
@@ -63,13 +61,9 @@ async function cfCreate(body: unknown) {
   if (result.status !== 0) throw new Error("Cloudflare application creation failed; inspect account state before retrying.");
   return z.object({ id: z.string(), aud: z.string() }).parse(JSON.parse(result.stdout));
 }
-// Verify paid-account identity and current rental price before any mutation.
+// Verify the selected account before provisioning resources.
 const account = await request(`https://api.twilio.com/2010-04-01/Accounts/${sid}.json`, twilioHeaders);
-if (account.sid !== sid || account.status !== "active" || account.type !== "Full") throw new Error("The selected Twilio account must be active and paid before purchasing this dedicated number. No upgrade or top-up was attempted.");
-const rental = await request("https://pricing.twilio.com/v1/PhoneNumbers/Countries/US", twilioHeaders);
-const prices = z.object({ country: z.string(), iso_country: z.literal("US"), price_unit: z.literal("USD"), phone_number_prices: z.array(z.object({ number_type: z.string(), current_price: z.string() })) }).parse(rental);
-const local = prices.phone_number_prices.find(p => p.number_type === "local");
-if (!local || !/^\d+(\.\d+)?$/.test(local.current_price) || Number(local.current_price) !== setup.quotedNumberMonthlyUsd) throw new Error("Current local-number price does not match the reviewed quote. Prepare and review a new plan.");
+if (account.sid !== sid || account.status !== "active") throw new Error("The selected Twilio account identity or active status does not match the reviewed plan.");
 // Only creates dedicated new resources. Never updates the digital-twin service.
 const app = await once("access", () => cfCreate(access));
 for (const [i, bypass] of bypasses.entries()) await once(`callback-access-${i}`, () => cfCreate(bypass));
@@ -82,10 +76,8 @@ const imported = await once("eleven-number", async () => z.object({ phone_number
 await once("outbound-only-routing", () => request(`https://api.twilio.com/2010-04-01/Accounts/${sid}/IncomingPhoneNumbers/${number.sid}.json`, twilioHeaders, new URLSearchParams(plan.number_routing).toString()));
 const readback = await request(`https://api.elevenlabs.io/v1/convai/agents/${created.agent_id}`, elevenHeaders);
 if (readback.agent_id !== created.agent_id) throw new Error("ElevenLabs readback returned a different agent.");
-assertSubset(readback.conversation_config, definition.conversation_config);
-assertSubset(readback.platform_settings, definition.platform_settings);
-const { selectedNumber, quotedNumberMonthlyUsd, cloudflareAccountId, oauthRedirectUris, ...baseConfig } = setup;
-const serviceConfig = configSchema.parse({ ...baseConfig, accessAudience: app.aud, twilioNumberSid: number.sid, fromNumber: number.phone_number, elevenAgentId: created.agent_id, elevenPhoneId: imported.phone_number_id, agentConfigHash: await agentHash(readback) });
+const { selectedNumber, cloudflareAccountId, oauthRedirectUris, ...baseConfig } = setup;
+const serviceConfig = configSchema.parse({ ...baseConfig, accessAudience: app.aud, twilioNumberSid: number.sid, fromNumber: number.phone_number, elevenAgentId: created.agent_id, elevenPhoneId: imported.phone_number_id });
 write("private/service-config.json", serviceConfig);
 write("private/worker-secrets.json", { SERVICE_CONFIG: JSON.stringify(serviceConfig), ELEVENLABS_API_KEY: required("ELEVENLABS_API_KEY"), TWILIO_AUTH_TOKEN: required("TWILIO_AUTH_TOKEN"), ELEVENLABS_WEBHOOK_SECRET: webhook.webhook_secret });
 write("private/agent-readback.json", readback);

@@ -8,7 +8,7 @@ export const usPhone = z.string().regex(/^\+1\d{10}$/).refine(value => {
 
 const text = (max: number) => z.string().trim().min(1).max(max);
 export const startSchema = z.strictObject({
-  request_id: text(128).regex(/^[a-zA-Z0-9._:-]+$/).describe("Stable identifier for this intended call. Reuse on retries; never change it to work around an uncertain dispatch."),
+  request_id: text(128).regex(/^[a-zA-Z0-9._:-]+$/).optional().describe("Optional client label accepted for existing clients. It is ignored: every invocation starts a new call, including repeated labels."),
   task_type: z.enum(["reminder", "booking", "support", "general"]),
   recipient: z.union([z.literal("self"), usPhone]),
   objective: text(2000),
@@ -23,7 +23,7 @@ export const startSchema = z.strictObject({
     z.strictObject({ action: z.literal("hang_up") }),
     z.strictObject({ action: z.literal("leave_message"), message: text(1500) }),
   ]),
-  max_duration_seconds: z.number().int().min(30).max(1800).optional(),
+  max_duration_seconds: z.number().int().positive().optional(),
 });
 export type StartInput = z.infer<typeof startSchema>;
 export const callId = z.string().uuid();
@@ -49,25 +49,18 @@ export type PhoneStatus = "pending" | "dispatching" | "dispatch_unknown" | "queu
 export type Outcome = "pending" | "unknown" | "voicemail_attempted" | "delivered_to_person" | "completed" | "partial" | "failed" | "needs_user_input";
 export type TranscriptTurn = { role: "user" | "agent"; message: string | null; time_in_call_secs: number; tool_calls?: unknown[] | null; tool_results?: unknown[] | null };
 export interface Task {
-  id: string; requestId: string; hash: string; input: StartInput; to: string;
-  created: number; expires: number; month: string; duration: number;
+  id: string; input: StartInput; to: string;
+  created: number; expires: number; duration: number;
   telephone: PhoneStatus; outcome: Outcome; cancelRequested: boolean;
   dispatchedAt?: number; deadline?: number; conversationId?: string; callSid?: string;
   nextCheck: number; attempts: number; lastError?: ReturnType<typeof publicError>;
-  reservationMicros: number; twilioCostMicros?: number; elevenCostMicros?: number;
-  twilioCostFinal?: boolean; elevenCostFinal?: boolean;
+  twilioCostMicros?: number; elevenCostMicros?: number;
   summary?: string; confirmation?: string; unresolved?: string;
   transcript?: TranscriptTurn[]; hasAudio?: boolean; evidence?: string;
   providerStart?: number; providerDuration?: number;
   elevenStatus?: "initiated" | "in-progress" | "processing" | "done" | "failed";
   elevenObservation?: number; twilioObservation?: number;
 }
-export function costsSettled(task: Task) {
-  if (task.twilioCostMicros === undefined || task.elevenCostMicros === undefined) return false;
-  if (task.telephone === "not_dispatched") return true;
-  return terminal.has(task.telephone) && (task.elevenStatus === "done" || task.elevenStatus === "failed") && task.twilioCostFinal === true && task.elevenCostFinal === true;
-}
-export function monthAt(time: number) { return new Date(time).toISOString().slice(0, 7); }
 export async function digest(value: string) {
   return [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)))].map(n => n.toString(16).padStart(2, "0")).join("");
 }

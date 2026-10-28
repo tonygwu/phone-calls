@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { CallError, terminal, type Task, type PhoneStatus, type TranscriptTurn } from "./contracts";
 import { type Config, type Env, secret } from "./config";
-import { agentDefinition, agentHash, dispatchBody } from "./agent";
+import { dispatchBody } from "./agent";
 
 const sid = z.string().regex(/^CA[0-9a-fA-F]{32}$/);
 export const dispatchResponse = z.object({ success: z.boolean(), message: z.string(), conversation_id: z.string().nullable(), callSid: sid.nullable() });
@@ -18,9 +18,7 @@ export const conversationSchema = z.object({
 });
 export type Conversation = z.infer<typeof conversationSchema>;
 export type TwilioCall = z.infer<typeof twilioCallSchema>;
-export type Quote = { reservationMicros: number; creditsAvailable: number; twilioBalanceUsd: number; twilioPerMinuteUsd: number; checkedAt: number; accountSid: string; agentId: string; model: string; voiceId: string };
 export interface Providers {
-  preflight(to: string, duration: number, now: number): Promise<Quote>;
   dispatch(task: Task): Promise<z.infer<typeof dispatchResponse>>;
   conversation(id: string): Promise<Conversation>;
   findConversation(task: Task): Promise<Conversation | null>;
@@ -36,14 +34,6 @@ const numeric = (value: string, label: string) => {
 function assert(check: unknown, code: string, message: string): asserts check {
   if (!check) throw new CallError(code, message, false, 503);
 }
-// Check the full desired subset in addition to the approved readback hash.
-export function assertSubset(actual: unknown, desired: unknown, path = "agent") {
-  if (desired && typeof desired === "object" && !Array.isArray(desired)) {
-    assert(actual && typeof actual === "object", "CONFIG_DRIFT", `${path} is absent.`);
-    for (const [key, value] of Object.entries(desired)) assertSubset((actual as Record<string, unknown>)[key], value, `${path}.${key}`);
-  } else assert(JSON.stringify(actual) === JSON.stringify(desired), "CONFIG_DRIFT", `${path} differs from the required configuration.`);
-}
-
 export class LiveProviders implements Providers {
   constructor(private env: Env, private c: Config, private fetcher: typeof fetch = fetch) {}
   private async request<S extends z.ZodType>(url: string, init: RequestInit, schema: S): Promise<z.output<S>>;
@@ -64,46 +54,8 @@ export class LiveProviders implements Providers {
   private eleven<S extends z.ZodType>(path: string, schema: S, body?: unknown) {
     return this.request(`https://api.elevenlabs.io${path}`, { method: body === undefined ? "GET" : "POST", headers: { "xi-api-key": secret(this.env, "ELEVENLABS_API_KEY"), "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) }, schema);
   }
-  private twilio<S extends z.ZodType>(path: string, schema: S, body?: URLSearchParams, pricing = false) {
-    return this.request(`https://${pricing ? "pricing" : "api"}.twilio.com${path}`, { method: body ? "POST" : "GET", headers: { Authorization: `Basic ${btoa(`${this.c.twilioAccountSid}:${secret(this.env, "TWILIO_AUTH_TOKEN")}`)}`, ...(body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}) }, ...(body ? { body: body.toString() } : {}) }, schema);
-  }
-  async preflight(to: string, duration: number, now: number): Promise<Quote> {
-    const c = this.c;
-    secret(this.env, "ELEVENLABS_WEBHOOK_SECRET");
-    const [agent, phone, account, number, subscription, balance, pricing] = await Promise.all([
-      this.eleven(`/v1/convai/agents/${encodeURIComponent(c.elevenAgentId)}`, z.record(z.string(), z.unknown())),
-      this.eleven(`/v1/convai/phone-numbers/${encodeURIComponent(c.elevenPhoneId)}`, z.object({ phone_number_id: z.string(), phone_number: z.string(), provider: z.literal("twilio"), assigned_agent: z.unknown() })),
-      this.twilio(`/2010-04-01/Accounts/${c.twilioAccountSid}.json`, z.object({ sid: z.string(), status: z.literal("active"), type: z.string() })),
-      this.twilio(`/2010-04-01/Accounts/${c.twilioAccountSid}/IncomingPhoneNumbers/${c.twilioNumberSid}.json`, z.object({ sid: z.string(), account_sid: z.string(), phone_number: z.string(), voice_url: z.string(), voice_method: z.string(), voice_application_sid: z.string().nullable(), voice_fallback_url: z.string().nullable(), trunk_sid: z.string().nullable(), sms_url: z.string().nullable(), sms_application_sid: z.string().nullable(), sms_fallback_url: z.string().nullable() })),
-      this.eleven("/v1/user/subscription", z.object({ status: z.string(), tier: z.string(), character_count: z.number().nonnegative(), character_limit: z.number().nonnegative() })),
-      this.twilio(`/2010-04-01/Accounts/${c.twilioAccountSid}/Balance.json`, z.object({ account_sid: z.string(), currency: z.literal("USD"), balance: z.string() })),
-      this.twilio(`/v2/Voice/Numbers/${encodeURIComponent(to)}?OriginationNumber=${encodeURIComponent(c.fromNumber)}`, z.object({
-        destination_number: z.string(), origination_number: z.string(), country: z.string(), iso_country: z.literal("US"), price_unit: z.literal("USD"),
-        // The provider filters by the exact caller. Multiple remaining prices are
-        // ambiguous: block rather than guess a prefix or choose the cheapest rate.
-        outbound_call_prices: z.array(z.object({ current_price: z.string(), origination_prefixes: z.array(z.string().min(1)).min(1) })).length(1),
-      }), undefined, true),
-    ]);
-    assert(account.sid === c.twilioAccountSid && account.type === "Full", "ACCOUNT_NOT_READY", "Twilio must be the selected active paid account. Trial routing has not been accepted for this evaluation.");
-    assert(number.sid === c.twilioNumberSid && number.account_sid === c.twilioAccountSid && number.phone_number === c.fromNumber, "IDENTITY_MISMATCH", "Twilio number does not match the configured account and caller ID.");
-    assert(number.voice_url === `${c.publicOrigin}/webhooks/twilio/inbound` && number.voice_method === "POST" && !number.voice_application_sid && !number.voice_fallback_url && !number.trunk_sid && !number.sms_url && !number.sms_application_sid && !number.sms_fallback_url, "ROUTING_UNSAFE", "Inbound voice must use the rejecting webhook; SMS and all fallback routes must be empty.");
-    assert(phone.phone_number_id === c.elevenPhoneId && phone.phone_number === c.fromNumber && phone.assigned_agent === null, "ROUTING_UNSAFE", "ElevenLabs number must match the caller ID and have no inbound assigned agent.");
-    assert(agent.agent_id === c.elevenAgentId, "IDENTITY_MISMATCH", "ElevenLabs returned a different agent.");
-    const desired = agentDefinition(c.voiceId);
-    assertSubset(agent.conversation_config, desired.conversation_config);
-    assertSubset(agent.platform_settings, desired.platform_settings);
-    assert(await agentHash(agent) === c.agentConfigHash, "CONFIG_DRIFT", "Agent configuration differs from its approved readback hash.");
-    assert(subscription.status === "active" && !["free", "trial"].includes(subscription.tier), "ACCOUNT_NOT_READY", "An active paid ElevenLabs subscription is required; Agents pricing must be verified in the quote.");
-    const creditsAvailable = subscription.character_limit - subscription.character_count;
-    const minutes = Math.ceil(duration / 60);
-    assert(creditsAvailable >= minutes * c.budget.elevenCreditsPerMinute, "CREDITS_EXHAUSTED", "Insufficient included ElevenLabs credits for the maximum call duration. No automatic top-up is allowed.");
-    assert(balance.account_sid === c.twilioAccountSid && pricing.destination_number === to && pricing.origination_number === c.fromNumber, "IDENTITY_MISMATCH", "Balance or destination pricing belongs to a different account, destination or caller number.");
-    const twilioPerMinuteUsd = numeric(pricing.outbound_call_prices[0].current_price, "Twilio rate");
-    assert(Number.isFinite(twilioPerMinuteUsd) && twilioPerMinuteUsd >= 0, "PRICING_UNKNOWN", "Twilio returned a non-finite or negative rate.");
-    const reservationMicros = minutes * (micros(twilioPerMinuteUsd) + micros(c.budget.additionalPerMinuteUsd)) + micros(c.budget.additionalPerCallUsd);
-    const twilioBalanceUsd = numeric(balance.balance, "Twilio balance");
-    assert(twilioBalanceUsd >= minutes * twilioPerMinuteUsd, "FUNDING_REQUIRED", "Twilio balance cannot cover this call. No automatic top-up is allowed.");
-    return { reservationMicros, creditsAvailable, twilioBalanceUsd, twilioPerMinuteUsd, checkedAt: now, accountSid: account.sid, agentId: c.elevenAgentId, model: "gpt-4.1-mini", voiceId: c.voiceId };
+  private twilio<S extends z.ZodType>(path: string, schema: S, body?: URLSearchParams) {
+    return this.request(`https://api.twilio.com${path}`, { method: body ? "POST" : "GET", headers: { Authorization: `Basic ${btoa(`${this.c.twilioAccountSid}:${secret(this.env, "TWILIO_AUTH_TOKEN")}`)}`, ...(body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}) }, ...(body ? { body: body.toString() } : {}) }, schema);
   }
   async dispatch(task: Task) {
     return await this.eleven("/v1/convai/twilio/outbound-call", dispatchResponse, dispatchBody(task, this.c)) as z.infer<typeof dispatchResponse>;
@@ -154,8 +106,6 @@ export function applyConversation(task: Task, c: Conversation, observation: numb
   if (task.deadline) task.deadline = Math.min(task.deadline, task.providerStart + 60_000 + task.duration * 1000);
   if (c.metadata.cost_fiat !== null) {
     task.elevenCostMicros = Math.max(task.elevenCostMicros ?? 0, micros(c.metadata.cost_fiat));
-    // A later terminal response without a price cannot finalize a prior estimate.
-    if (c.status === "done" || c.status === "failed") task.elevenCostFinal = true;
   }
   if (c.status !== "done" && c.status !== "failed") return;
   task.transcript = c.transcript as TranscriptTurn[];
@@ -183,7 +133,6 @@ export function applyTwilio(task: Task, c: TwilioCall, observation: number) {
   if (c.price !== null) {
     if (c.price_unit !== "USD") throw new CallError("COST_UNKNOWN", "Twilio returned a charge in an unexpected currency.");
     task.twilioCostMicros = Math.max(task.twilioCostMicros ?? 0, micros(Math.abs(numeric(c.price, "Twilio charge"))));
-    if (terminal.has(c.status)) task.twilioCostFinal = true;
   }
   if (["busy", "no-answer", "failed"].includes(c.status) && task.outcome === "pending") task.outcome = "failed";
 }

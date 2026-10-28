@@ -1,42 +1,18 @@
-import { CallError, DAY, RETENTION, canonical, costsSettled, digest, monthAt, publicError, startSchema, terminal, type StartInput, type Task } from "./contracts";
+import { CallError, DAY, RETENTION, publicError, startSchema, terminal, type Task } from "./contracts";
 import type { Config } from "./config";
-import { applyConversation, applyTwilio, correlate, micros, type Providers } from "./providers";
+import { applyConversation, applyTwilio, correlate, type Providers } from "./providers";
 import type { Store } from "./store";
 
 // Provider polling is 15 seconds while active, 60 seconds for delayed final
-// analysis/prices, and 1 hour after a day. No polling path ever redials.
+// analysis, and 1 hour after a day. Polling observes existing calls.
 export class CallEngine {
   constructor(readonly store: Store, readonly providers: Providers, readonly config: Config, private now: () => number = Date.now) {}
   async start(raw: unknown) {
     const input = startSchema.parse(raw);
-    const requestHash = await digest(input.request_id);
-    const hash = await digest(canonical(input));
-    const existing = this.store.byRequest(requestHash);
-    if (existing === "expired") throw new CallError("REQUEST_EXPIRED", "This request has already been used and its content expired. It will never be redialed.");
-    if (existing) {
-      if (existing.expires <= this.now()) throw new CallError("REQUEST_EXPIRED", "This request's call content has expired. It will never be redialed.");
-      if (existing.hash !== hash) throw new CallError("IDEMPOTENCY_CONFLICT", "request_id was already used with different call instructions.");
-      return this.view(existing);
-    }
     const to = input.recipient === "self" ? this.config.selfNumber : input.recipient;
-    if (this.config.testOnly && to !== this.config.selfNumber) throw new CallError("TEST_DESTINATION_ONLY", "Only the configured test number is enabled until voicemail acceptance is confirmed.");
     const duration = input.max_duration_seconds ?? (input.task_type === "reminder" ? 180 : 900);
-    if (input.task_type === "reminder" && duration > 180) throw new CallError("DURATION_LIMIT", "Reminder calls are limited to three minutes.");
-    if (this.store.active()) throw new CallError("CALL_IN_PROGRESS", "Another call is active or its dispatch is unresolved. Inspect that call before starting another.");
-    const quote = await this.providers.preflight(to, duration, this.now());
-    // Recheck synchronously after all network awaits: another start may have won.
-    const raced = this.store.byRequest(requestHash);
-    if (raced) {
-      if (raced !== "expired" && raced.expires <= this.now()) throw new CallError("REQUEST_EXPIRED", "This request's call content has expired. It will never be redialed.");
-      if (raced === "expired" || raced.hash !== hash) throw new CallError("IDEMPOTENCY_CONFLICT", "request_id changed or expired while validating setup.");
-      return this.view(raced);
-    }
-    if (this.store.active()) throw new CallError("CALL_IN_PROGRESS", "Another call was accepted while setup was being checked.");
     const now = this.now();
-    if (now - quote.checkedAt > 60_000) throw new CallError("PRICING_EXPIRED", "The preflight quote expired. Retry with the same request_id.");
-    const month = monthAt(now);
-    if (this.store.used(month) + quote.reservationMicros + micros(this.config.budget.fixedMonthlyUsd) > micros(this.config.budget.monthlyUsd)) throw new CallError("BUDGET_EXHAUSTED", "The monthly budget cannot cover this call's maximum allowance, existing charges and outstanding reservations.");
-    const task: Task = { id: crypto.randomUUID(), requestId: requestHash, hash, input, to, duration, created: now, expires: now + RETENTION, month, telephone: "pending", outcome: "pending", cancelRequested: false, nextCheck: now, attempts: 0, reservationMicros: quote.reservationMicros };
+    const task: Task = { id: crypto.randomUUID(), input, to, duration, created: now, expires: now + RETENTION, telephone: "pending", outcome: "pending", cancelRequested: false, nextCheck: now, attempts: 0 };
     this.store.put(task);
     return this.view(task);
   }
@@ -48,22 +24,16 @@ export class CallEngine {
   async tick() {
     const now = this.now();
     this.store.purge(now);
-    for (const snapshot of this.store.due(now)) {
-      if (snapshot.expires <= now) continue;
+    await Promise.all(this.store.due(now).map(async snapshot => {
+      if (snapshot.expires <= now) return;
       if (snapshot.telephone === "pending") await this.dispatch(snapshot.id);
       else await this.reconcile(snapshot.id);
-    }
+    }));
     this.store.purge(now);
   }
   private async dispatch(id: string) {
     const task = this.require(id);
     if (task.telephone !== "pending") return;
-    if (this.now() - task.created > 60_000) {
-      task.telephone = "not_dispatched"; task.outcome = "failed";
-      task.twilioCostMicros = 0; task.elevenCostMicros = 0; task.nextCheck = task.expires;
-      task.lastError = { code: "DISPATCH_EXPIRED", message: "Dispatch did not begin within the 60-second quote window. No call was placed.", retryable: false };
-      this.store.put(task); return;
-    }
     task.telephone = "dispatching";
     task.dispatchedAt = this.now();
     task.deadline = task.dispatchedAt + 60_000 + task.duration * 1000;
@@ -82,7 +52,7 @@ export class CallEngine {
         current.callSid = result.callSid;
       }
       if (!terminal.has(current.telephone) && ["dispatching", "dispatch_unknown"].includes(current.telephone)) {
-        // Even success:false may contain a call ID. Reconcile before releasing a slot.
+        // Even success:false may contain an existing call ID.
         current.telephone = current.callSid ? "queued" : "dispatch_unknown";
       }
       if (!result.success) current.lastError = { code: "DISPATCH_REJECTED", message: "Provider did not confirm successful initiation. Reconciliation is required; no redial.", retryable: false };
@@ -143,14 +113,14 @@ export class CallEngine {
         if (conversation) { correlate(task, conversation, this.config); applyConversation(task, conversation, observation); this.store.put(task); }
       }
       task = this.mergeLocal(task);
-      if (task.telephone === "dispatch_unknown") task.lastError = { code: "DISPATCH_UNKNOWN", message: "Provider identity is still unresolved. No redial; capacity and budget remain reserved.", retryable: false };
+      if (task.telephone === "dispatch_unknown") task.lastError = { code: "DISPATCH_UNKNOWN", message: "Provider identity is still unresolved. Inspect this task for its result.", retryable: false };
       else delete task.lastError;
     } catch (error) {
       task = this.require(id);
       task.lastError = publicError(error);
     }
     const elapsed = this.now() - task.created;
-    const complete = costsSettled(task) && task.transcript !== undefined;
+    const complete = terminal.has(task.telephone) && (task.telephone === "not_dispatched" || ((task.elevenStatus === "done" || task.elevenStatus === "failed") && task.transcript !== undefined));
     task.nextCheck = complete ? task.expires : this.now() + (!terminal.has(task.telephone) ? 15_000 : elapsed > DAY ? 3_600_000 : 60_000);
     if (!terminal.has(task.telephone) && task.deadline !== undefined && task.deadline > this.now()) task.nextCheck = Math.min(task.nextCheck, task.deadline);
     this.store.put(task);
@@ -194,8 +164,8 @@ export class CallEngine {
       cancel_requested: task.cancelRequested, termination_confirmed: task.cancelRequested && terminal.has(task.telephone),
       summary: task.summary ?? null, confirmation_details: task.confirmation ?? null, unresolved_questions: task.unresolved ?? null,
       evidence: task.evidence ?? null, delivery_verified: false,
-      provider: { conversation_id: task.conversationId ?? null, call_sid: task.callSid ?? null, configured_model: "gpt-4.1-mini", served_model: "not_reported" },
-      cost: { reserved_usd: task.reservationMicros / 1e6, twilio_usd: task.twilioCostMicros === undefined ? null : task.twilioCostMicros / 1e6, elevenlabs_total_fiat_usd: task.elevenCostMicros === undefined ? null : task.elevenCostMicros / 1e6, status: costsSettled(task) ? "provider_reported" : "unsettled", note: "ElevenLabs total fiat is conservatively charged against the additional budget even when subscription credits cover it. Reported charges never decrease automatically; refunds require reconciliation." },
+      provider: { conversation_id: task.conversationId ?? null, call_sid: task.callSid ?? null },
+      cost: { twilio_usd: task.twilioCostMicros === undefined ? null : task.twilioCostMicros / 1e6, elevenlabs_total_fiat_usd: task.elevenCostMicros === undefined ? null : task.elevenCostMicros / 1e6, note: "Provider-reported amounts when available. These may be provisional and do not enforce a spending limit." },
       transcript: includeTranscript && turns ? { turns: turns.slice(offset, offset + limit), total: turns.length, next_offset: offset + limit < turns.length ? offset + limit : null } : null,
       recording_url: task.hasAudio ? `${this.config.publicOrigin}/calls/${task.id}/recording` : null,
       error: task.lastError ?? null,

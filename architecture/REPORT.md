@@ -1,5 +1,7 @@
 # How the phone-calling service works
 
+Historical architecture snapshot: this model predates the user-authorized simplification on 2026-10-28. Its readiness, budget, fingerprint and duplicate-admission components no longer describe the current implementation. See ../docs/OPERATIONS.md for the current call path. The generated views remain a record of the earlier design.
+
 An owner asks a client to make one call with a purpose, facts and explicit limits. The Worker authenticates that owner, and a durable coordinator stores the task and reserves its allowance before contacting ElevenLabs. The conversational agent receives fresh context for that call. The client can disconnect and later retrieve separate telephone status, task outcome and evidence.
 
 This report describes the deployed private service. Authenticated readiness and provider readbacks establish its Cloudflare Access application, dedicated Twilio number and ElevenLabs agent. Codex, ChatGPT and the primary Claude Code profile have connected. Three additional Claude profiles are registered and await individual login. GPT-4.1 Mini appears in the real-call billing evidence and generated simulation turns; that evidence does not guarantee future responses.

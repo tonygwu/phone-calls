@@ -1,5 +1,7 @@
 # User implementation request
 
+This is the original implementation request. On 2026-10-28 the user authorized removal of readiness/configuration gates, duplicate-call controls and spending controls. Those older requirements below are superseded. See README.md and docs/OPERATIONS.md for current behavior.
+
 The user explicitly requested implementation of the following approved plan. Subsequent input supplied a private Google Voice test destination and allowed a humorous reminder. The user upgraded Twilio and explicitly approved a $20 starting deposit; the service's additional monthly budget remains $10. The side browser is now connected after the user enabled its plugin, and provider credentials and Cloudflare authentication are established. The user will install the ChatGPT MCP connection manually after a side-browser sign-in error. The private number is intentionally omitted here. The original plan text below preserves the earlier setup assumptions.
 
 ## Phone-calling MCP on Cloudflare, starting with voicemail

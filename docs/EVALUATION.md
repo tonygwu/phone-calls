@@ -1,5 +1,7 @@
 # Evidence and rollout
 
+Historical evaluation record: the budget, configuration-fingerprint, duplicate-request and readiness checks described below were removed at the user’s request on 2026-10-28. Current behavior is documented in OPERATIONS.md; historical test counts and evidence remain unchanged.
+
 Local tests run the production engine against SQLite in Cloudflare's actual local Workers runtime, with simulated provider responses. They cover input validation, owner authentication, signatures, budget admission, concurrency, retries, uncertain dispatch, callback races, restart recovery, cancellation, independent hangup during an ElevenLabs outage, duration enforcement, retention and real MCP HTTP tool dispatch. Provider-shape tests check account and destination identity and fail on absent required telemetry.
 
 The first run attempted 24 tests: 22 succeeded and 2 failed. The failures exposed retention of unresolved private content and slower watchdog polling after a day. A later run exposed two more failures: ElevenLabs lookup errors could prevent a known Twilio call from being terminated, and delayed alarms could dial stale pending tasks. The corresponding tests failed before their fixes and passed afterward. A budget rounding assertion also caught a one-microdollar floating-point artifact; reservation arithmetic now adds integer microdollar components.
