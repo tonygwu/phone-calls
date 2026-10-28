@@ -1,14 +1,20 @@
 {
-  "request_id": "replace-with-a-new-uuid-for-this-intended-call",
   "task_type": "reminder",
   "recipient": "self",
   "objective": "Deliver the supplied reminder once to my voicemail, or once to me if I answer.",
   "context": "This is an authorized test call to my own number. Wait for the voicemail greeting and beep. Do not repeat the message.",
-  "success_criteria": ["The entire reminder is spoken once after the greeting", "The call ends after the message"],
+  "success_criteria": [
+    "The entire reminder is spoken once after the greeting",
+    "The call ends after the message"
+  ],
   "constraints": {
     "permitted_commitments": [],
-    "acceptable_alternatives": ["Deliver the reminder once to a person who answers"],
-    "information_may_disclose": ["The supplied reminder and that this is an automated recorded call"]
+    "acceptable_alternatives": [
+      "Deliver the reminder once to a person who answers"
+    ],
+    "information_may_disclose": [
+      "The supplied reminder and that this is an automated recorded call"
+    ]
   },
   "voicemail": {
     "action": "leave_message",

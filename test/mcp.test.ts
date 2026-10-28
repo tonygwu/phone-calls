@@ -4,7 +4,7 @@ import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test"
 import { createServer } from "../src/mcp";
 import { input } from "./fixtures";
 
-it("exposes all five tools and routes requests through the real HTTP MCP handler", async () => {
+it("exposes four tools and routes independent start requests through the real HTTP MCP handler", async () => {
   const invoke = vi.fn(async () => ({ ok: true, data: { ready: false } }));
   const handler = createMcpHandler(() => createServer(invoke));
   async function rpc(method: string, params: unknown) {
@@ -20,7 +20,8 @@ it("exposes all five tools and routes requests through the real HTTP MCP handler
     return JSON.parse(text);
   }
   const list = await rpc("tools/list", {});
-  expect(list.result.tools.map((t: { name: string }) => t.name)).toEqual(["phone_calls_get_setup", "phone_calls_start_call", "phone_calls_get_call", "phone_calls_list_calls", "phone_calls_cancel_call"]);
+  expect(list.result.tools.map((t: { name: string }) => t.name)).toEqual(["phone_calls_start_call", "phone_calls_get_call", "phone_calls_list_calls", "phone_calls_cancel_call"]);
+  expect(list.result.tools[0].annotations.idempotentHint).toBe(false);
   expect(invoke).not.toHaveBeenCalled();
   await rpc("tools/call", { name: "phone_calls_start_call", arguments: input });
   expect(invoke).toHaveBeenCalledWith("start", input);
