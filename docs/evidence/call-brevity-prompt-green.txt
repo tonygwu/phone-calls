@@ -1,0 +1,75 @@
+
+> phone-calls-mcp@0.1.0 check
+> npm run typecheck && npm test && npm run build
+
+
+> phone-calls-mcp@0.1.0 typecheck
+> tsc --noEmit
+
+
+> phone-calls-mcp@0.1.0 test
+> vitest run && node --import tsx --test test/preflight.test.mjs test/conversation-simulate.test.mjs
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - import "./test/data" without a file extension (vitest.config.ts:4:21). Add the file extension
+  - import "./test/runtime-provider" without a file extension (vitest.config.ts:5:33). Add the file extension
+  - import "../src/config" without a file extension (test/data.ts:1:29). Add the file extension
+  - import "./data" without a file extension (test/runtime-provider.ts:1:21). Add the file extension
+  - import "../src/contracts" without a file extension (test/data.ts:2:33). Add the file extension
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.12 <repo>
+
+ ✓ test/conversation-judge.test.ts (25 tests) 10ms
+ ✓ test/providers.test.ts (3 tests) 7ms
+ ✓ test/mcp.test.ts (1 test) 14ms
+ ✓ test/ledger.test.ts (1 test) 29ms
+ ✓ test/simplification.test.ts (7 tests) 32ms
+ ✓ test/engine.test.ts (36 tests) 76ms
+ ✓ test/security.test.ts (6 tests) 43ms
+
+ Test Files  7 passed (7)
+      Tests  79 passed (79)
+   Start at  16:44:16
+   Duration  1.40s (transform 1.81s, setup 0ms, import 6.23s, tests 211ms, environment 1ms)
+
+✔ allows simulation endpoints and readbacks only (0.525917ms)
+✔ twelve requests, two setup failures, pending and unknown attempts stop submission (0.176417ms)
+✔ test creation is explicitly a simulation with mocked tools and no seeded agent speech (0.268375ms)
+✔ scores complete control and preserves exact billed telemetry (3.678584ms)
+✔ wrong served model and host sequence remain explicit protocol failures (0.924416ms)
+✔ missing prices, credits, model and workspace identities fail loudly (0.883584ms)
+✔ host case and punctuation normalize but words do not (0.41275ms)
+✔ readback accepts provider defaults but rejects changed requested fields (0.070792ms)
+✔ billing survives model telemetry failure without leaking billing IDs or inventing zero (0.555ms)
+✔ provider content failure and cancellation cannot count as successful arms (0.406125ms)
+✔ incomplete billing retains every valid field while failing completeness (0.280459ms)
+✔ local preflight: valid (386.185917ms)
+✔ local preflight: invalid (250.92125ms)
+✔ local preflight: missing (250.789209ms)
+✔ local preflight: auth-failed (336.105959ms)
+✔ synthetic provider boundary refuses outbound dispatch to an unrelated host (10.492959ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1331.669167
+
+> phone-calls-mcp@0.1.0 build
+> cf build
+
+├  Build
+│  Delegating to Vite
+vite v8.3.5 building ssr environment for production...
+transforming...
+✓ 265 modules transformed.
+rendering chunks...
+computing gzip size...
+.cloudflare/output/v0/workers/default/bundle/.vite/manifest.json      0.15 kB │ gzip:   0.11 kB
+.cloudflare/output/v0/workers/default/bundle/index.js             1,134.51 kB │ gzip: 261.66 kB │ map: 2,091.94 kB
+
+✓ built in 52ms
+◆  Build complete
