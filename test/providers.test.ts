@@ -26,6 +26,34 @@ async function setup(overrides: Record<string, unknown> = {}) {
   return { p: new LiveProviders(env, c, fetcher), responses, c, fetcher };
 }
 describe("provider preflight and schemas", () => {
+  it.each(["speech", "widget", "both"])("accepts newly materialized provider defaults during preflight: %s", async variant => {
+    const { p, responses, c } = await setup();
+    const agent = responses[`/v1/convai/agents/${cfg.elevenAgentId}`] as ReturnType<typeof agentDefinition>;
+    const asr = { provider: "scribe_realtime" };
+    const widget = { variant: "full" };
+    Object.assign(agent.conversation_config, { asr });
+    Object.assign(agent.platform_settings, { widget });
+    c.agentConfigHash = await agentHash(agent);
+    if (variant !== "widget") Object.assign(asr, { keyterm_libraries: [] });
+    if (variant !== "speech") Object.assign(widget, { transcript_speech_sync_enabled: true });
+    const snapshot = structuredClone(agent);
+    await expect(p.preflight(cfg.selfNumber, 180, NOW)).resolves.toMatchObject({ agentId: cfg.elevenAgentId });
+    expect(agent).toEqual(snapshot);
+  });
+  it.each(["nonempty_library", "disabled_sync", "unknown_asr", "unknown_widget"])("rejects values outside the known provider defaults: %s", async variant => {
+    const { p, responses, c } = await setup();
+    const agent = responses[`/v1/convai/agents/${cfg.elevenAgentId}`] as ReturnType<typeof agentDefinition>;
+    const asr = { provider: "scribe_realtime" };
+    const widget = { variant: "full" };
+    Object.assign(agent.conversation_config, { asr });
+    Object.assign(agent.platform_settings, { widget });
+    c.agentConfigHash = await agentHash(agent);
+    if (variant === "nonempty_library") Object.assign(asr, { keyterm_libraries: ["library_changed"] });
+    if (variant === "disabled_sync") Object.assign(widget, { transcript_speech_sync_enabled: false });
+    if (variant === "unknown_asr") Object.assign(asr, { unknown_setting: [] });
+    if (variant === "unknown_widget") Object.assign(widget, { unknown_setting: true });
+    await expect(p.preflight(cfg.selfNumber, 180, NOW)).rejects.toMatchObject({ code: "CONFIG_DRIFT" });
+  });
   it("accepts provider-materialized empty analysis metadata without mutating its input", async () => {
     const approved = agentDefinition(cfg.voiceId);
     const readback = structuredClone(approved);
