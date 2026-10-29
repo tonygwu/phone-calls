@@ -32,3 +32,5 @@ rules in `docs/OPERATIONS.md` and `docs/DEPLOYMENT.md`.
 `npm test` includes the Worker suite and isolated operational tests. `test/runtime-provider.ts` supplies synthetic responses for real Durable Object route tests; unexpected hosts and endpoints fail without network fallback.
 
 Use `npm run simulate -- plan|run|collect|summary` for reviewed conversation simulations. See `docs/EVALUATION.md`; this tool cannot place telephone calls.
+
+Use `skills/phone-call-brief/SKILL.md` to prepare concise call payloads with factual context and silent rules; installation and ChatGPT use are in `docs/CLIENTS.md`.

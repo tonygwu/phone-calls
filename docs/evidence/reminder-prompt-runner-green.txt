@@ -1,0 +1,23 @@
+✔ allows simulation endpoints and readbacks only (0.637166ms)
+✔ fourteen authorized requests, two setup failures, pending and unknown attempts stop submission (0.199833ms)
+✔ simulation selects the production reminder override and leaves ordinary prompts unchanged (1.619167ms)
+✔ test creation is explicitly a simulation with mocked tools and no seeded agent speech (0.28425ms)
+✔ scores complete control and preserves exact billed telemetry (3.883208ms)
+✔ wrong served model and host sequence remain explicit protocol failures (0.870792ms)
+✔ missing prices, credits, model and workspace identities fail loudly (0.701125ms)
+✔ host case and punctuation normalize but words do not (0.3925ms)
+✔ readback accepts provider defaults but rejects changed requested fields (0.088042ms)
+✔ billing survives model telemetry failure without leaking billing IDs or inventing zero (0.706333ms)
+✔ provider content failure and cancellation cannot count as successful arms (0.421583ms)
+✔ incomplete billing retains every valid field while failing completeness (0.272375ms)
+✔ an agent ending a valid host prefix early remains a task failure in the comparison (0.28225ms)
+✔ explicit branch success criteria are sent to the provider evaluator (0.038667ms)
+✔ submission progress preserves previous success and failure counts through the real runner (26.79675ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 15
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 211.681125

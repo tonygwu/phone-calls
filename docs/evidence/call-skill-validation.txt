@@ -1,0 +1,10 @@
+{"validation":"passed","facts":6,"rules":16,"criteria":2,"callsPlaced":0,"schedulesCreated":0}
+claude -> /tmp/phone-call-skill-install-check/.claude/skills
+  + phone-call-brief           would link -> /tmp/phone-call-skill-install-check/.claude/skills/phone-call-brief
+
+codex -> /tmp/phone-call-skill-install-check/.codex/skills
+  + phone-call-brief           would link -> /tmp/phone-call-skill-install-check/.codex/skills/phone-call-brief
+
+attempted=2  planned=2
+
+(dry run: nothing was changed)

@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assertSimulationRequest, assertCanStart, buildTest, scoreInvocation, MAX_RUNS, PROTOCOL, billingTelemetry, matchesRequested } from '../scripts/conversation-simulate.ts';
+import { createHash } from 'node:crypto';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync, copyFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { canonical } from '../src/contracts.ts';
+import { agentDefinition } from '../src/agent.ts';
+import * as simulation from '../scripts/conversation-simulate.ts';
+import { assertSimulationRequest, assertCanStart, buildTest, scoreInvocation, MAX_RUNS, PROTOCOL, billingTelemetry, matchesRequested, main } from '../scripts/conversation-simulate.ts';
 const API = 'https://api.elevenlabs.io';
 const state = () => ({protocol:PROTOCOL,attempts:[],setupFailures:0,tests:{}});
 const end = {role:'agent',message:null,producing_llm:'gpt-4.1-mini',tool_calls:[{tool_name:'end_call',params_as_json:JSON.stringify({system__message_to_speak:'Thanks for confirming, goodbye.'})}]};
@@ -13,12 +20,22 @@ test('allows simulation endpoints and readbacks only',()=>{
  for(const [path,method] of [['/v1/convai/agent-testing/create','POST'],['/v1/convai/agents/agent_test/run-tests','POST'],['/v1/convai/agents/agent_test','GET'],['/v1/convai/agent-testing/test_test','GET'],['/v1/user','GET'],['/v1/convai/test-invocations/invoke_test','GET']]) assert.doesNotThrow(()=>assertSimulationRequest(API+path,method));
  for(const [url,method] of [[API+'/v1/convai/twilio/outbound-call','POST'],[API+'/v1/convai/agents/create','POST'],[API+'/v1/convai/agents/agent_test','PATCH'],['https://evil.example/v1/convai/agents/agent_test/run-tests','POST'],[API+'/v1/convai/agents/agent_test/run-tests?dial=true','POST']]) assert.throws(()=>assertSimulationRequest(url,method));
 });
-test('twelve requests, two setup failures, pending and unknown attempts stop submission',()=>{
+test('fourteen authorized requests, two setup failures, pending and unknown attempts stop submission',()=>{
+ assert.equal(MAX_RUNS,14);
  assert.doesNotThrow(()=>assertCanStart(state()));
  const capped=state();capped.attempts=Array.from({length:MAX_RUNS},()=>({status:'completed'}));assert.throws(()=>assertCanStart(capped),/cap/);
  const setup=state();setup.setupFailures=2;assert.throws(()=>assertCanStart(setup),/Two setup/);
  for(const status of ['intent','unknown','pending']){const s=state();s.attempts.push({status});assert.throws(()=>assertCanStart(s),/reconciliation/);}
  const unknownTest=state();unknownTest.tests.a={status:'intent'};assert.throws(()=>assertCanStart(unknownTest),/creation/);
+});
+test('simulation selects the production reminder override and leaves ordinary prompts unchanged',()=>{
+ const reminder=JSON.parse(readFileSync('evals/reminder-simulation.json','utf8'));
+ const selected=simulation.buildSimulationDefinition(reminder,'synthetic-voice');
+ assert.match(selected.conversation_config.agent.prompt.prompt,/Exact final speech/);
+ assert.equal(selected.platform_settings.overrides.conversation_config_override.agent.prompt.prompt,true);
+ const booking=JSON.parse(readFileSync('evals/cancellation-simulation.json','utf8'));
+ assert.equal(simulation.buildSimulationDefinition(booking,'synthetic-voice').conversation_config.agent.prompt.prompt,agentDefinition('synthetic-voice').conversation_config.agent.prompt.prompt);
+ assert.throws(()=>simulation.buildSimulationDefinition({...reminder,dynamicVariables:{task_type:'reminder'}},'synthetic-voice'));
 });
 test('test creation is explicitly a simulation with mocked tools and no seeded agent speech',()=>{
  const t=buildTest({id:'short-cancellation',hostScript:script,dynamicVariables:{objective:'Cancel'},judge:expected.judge});
@@ -61,4 +78,43 @@ test('incomplete billing retains every valid field while failing completeness',(
  const credits=billingTelemetry({test_runs:[{credits_used:120}]});assert.equal(credits.creditsUsed,120);assert.equal(credits.providerReportedUsd,null);assert.equal(credits.billingState,'missing_or_invalid');
  const partial=billingTelemetry({test_runs:[{credits_used:120,charging:{llm_price:0.012}}]});assert.equal(partial.creditsUsed,120);assert.equal(partial.billingComponents.llmPrice,0.012);assert.equal(partial.billingComponents.platformPrice,null);assert.equal(partial.providerReportedUsd,null);
  const invalid=billingTelemetry({test_runs:[{credits_used:-1,charging:{llm_price:0.012,platform_price:0}}]});assert.equal(invalid.creditsUsed,null);assert.equal(invalid.providerReportedUsd,0.012);assert.equal(invalid.billingState,'missing_or_invalid');
+});
+test('an agent ending a valid host prefix early remains a task failure in the comparison',()=>{
+ const d=raw();d.test_runs[0].agent_responses=structuredClone(events.slice(0,7));d.test_runs[0].agent_responses.push(structuredClone(end));
+ const result=scoreInvocation(d,expected);assert.equal(result.passed,false);assert.equal(result.failureCategory,'conversation_checks');assert.equal(result.comparisonEligible,true);assert.equal(result.prematureAgentEnd,true);
+});
+test('explicit branch success criteria are sent to the provider evaluator',()=>{
+ const successConditions=['Decline the unauthorized fee and return follow-up to the owner; cancellation is not required.'];
+ const t=buildTest({id:'fee-branch',hostScript:script,dynamicVariables:{objective:'Decline fee'},judge:expected.judge,successConditions});
+ assert.deepEqual(t.success_conditions,successConditions);
+});
+test('submission progress preserves previous success and failure counts through the real runner',async()=>{
+ const source=process.cwd();const root=mkdtempSync(join(tmpdir(),'simulation-progress-'));const oldFetch=globalThis.fetch;const oldLog=console.log;const oldKey=process.env.ELEVENLABS_API_KEY;const logs=[];
+ try{
+  for(const dir of ['scripts','test','src','evals','private/conversation-eval']) mkdirSync(join(root,dir),{recursive:true});
+  for(const file of ['scripts/conversation-simulate.ts','test/conversation-judge.ts','src/agent.ts','package-lock.json']) copyFileSync(join(source,file),join(root,file));
+  writeFileSync(join(root,'private/service-config.json'),JSON.stringify({elevenAgentId:'agent_test',voiceId:'synthetic-voice'}));
+  const fixture={id:'progress-control',hostScript:script,dynamicVariables:{objective:'Cancel',task_type:'booking',voicemail_action:'hang_up',voicemail_message:''},judge:expected.judge};
+  writeFileSync(join(root,'evals/control.json'),JSON.stringify(fixture));
+  const live={agent_id:'agent_test',...agentDefinition('synthetic-voice')};
+  const account={user_id:'user_test',workspace_id:'workspace_test'};
+  let testDefinition;
+  globalThis.fetch=async(url,init)=>{
+   assert.equal(init.redirect,'error');
+   if(url===API+'/v1/user') return Response.json(account);
+   if(url===API+'/v1/convai/agents/agent_test' && init.method==='GET') return Response.json(live);
+   if(url===API+'/v1/convai/agent-testing/test_test') return Response.json({id:'test_test',...testDefinition});
+   assert.equal(url,API+'/v1/convai/agents/agent_test/run-tests');assert.equal(init.method,'POST');
+   return Response.json({id:'new_invocation',test_runs:[{agent_id:'agent_test',test_id:'test_test',test_invocation_id:'new_invocation'}]});
+  };
+  console.log=value=>logs.push(value);process.chdir(root);process.env.ELEVENLABS_API_KEY='synthetic-progress-key';
+  await main(['plan','progress','evals/control.json']);
+  const prepared=JSON.parse(readFileSync('private/conversation-eval/progress-plan.json','utf8'));testDefinition=prepared.plan.test;
+  const testHash=createHash('sha256').update(canonical(testDefinition)).digest('hex');
+  const attempts=[false,false,true].map((passed,i)=>({ordinal:i+1,arm:'previous',planSha256:'a'.repeat(64),status:'completed',failureCategory:passed?null:'conversation_checks',testId:'test_test',record:{passed}}));
+  writeFileSync('private/conversation-eval/ledger.json',JSON.stringify({protocol:PROTOCOL,attempts,setupFailures:0,mutations:[],tests:{[testHash]:{status:'ready',id:'test_test'}}}));
+  writeFileSync('private/conversation-eval/progress-review.json',JSON.stringify({verdict:'ship',planSha256:prepared.planSha256}));
+  await main(['run','progress']);
+  const progress=JSON.parse(logs.at(-1));assert.equal(progress.attempted,4);assert.equal(progress.succeeded,1);assert.equal(progress.failed,2);assert.equal(progress.pendingOrUnknown,1);assert.deepEqual(progress.failureTaxonomy,{conversation_checks:2});
+ }finally{process.chdir(source);globalThis.fetch=oldFetch;console.log=oldLog;if(oldKey===undefined)delete process.env.ELEVENLABS_API_KEY;else process.env.ELEVENLABS_API_KEY=oldKey;rmSync(root,{recursive:true,force:true});}
 });

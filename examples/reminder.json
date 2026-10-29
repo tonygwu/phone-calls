@@ -2,7 +2,11 @@
   "task_type": "reminder",
   "recipient": "self",
   "objective": "Deliver the supplied reminder once to my voicemail, or once to me if I answer.",
-  "context": "This is an authorized test call to my own number. Wait for the voicemail greeting and beep. Do not repeat the message.",
+  "context": "Recycling goes out tomorrow morning.",
+  "rules": [
+    "Wait for the voicemail greeting and beep before leaving the supplied message.",
+    "Deliver the entire supplied message verbatim, exactly once."
+  ],
   "success_criteria": [
     "The entire reminder is spoken once after the greeting",
     "The call ends after the message"

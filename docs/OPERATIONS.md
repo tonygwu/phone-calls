@@ -1,5 +1,7 @@
 # Call behavior and recovery
 
+Use short factual `context` as background notes and optional `rules` for instructions the phone agent follows silently. At most 20 rules of 500 characters each are accepted. The dispatcher supplies an empty array for existing clients and stored tasks that omit the field. Keep lookup conditions, ownership checks and reviewer guardrails out of spoken facts. The agent uses short turns and one lookup identifier at a time; supplied reminder and voicemail text remains verbatim. For a reminder with a supplied voicemail message, dispatch selects a dedicated exact-message prompt. Other tasks keep the conversational prompt. Only prompt text and maximum duration can be overridden; model and tool overrides remain disabled. The caller template and installation instructions are in `docs/CLIENTS.md`.
+
 Only the configured owner can manage calls or read recordings. The Worker validates the signed Access issuer, audience, expiry, email and subject. It rejects other hostnames and browser origins. The two provider callback paths accept signed POST requests only. Twilio recording is disabled; ElevenLabs recordings stream through an authenticated route.
 
 Every start invocation creates a new task and a new call, including repeated inputs or `request_id` labels. Calls may overlap. There are no setup-readiness, agent-fingerprint, budget, price, balance, credit, duplicate-request, or active-call admission checks. The service does not perform automatic top-ups or account upgrades. Provider billing and account limits apply directly.
