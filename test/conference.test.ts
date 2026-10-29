@@ -231,9 +231,11 @@ describe("real conference provider adapter with synthetic HTTP", () => {
     expect(requests[1].form.get("Url")).toContain("op=owner-answer"); expect(requests[1].form.get("Timeout")).toBe("60");
   });
   it("registers raw text TwiML and rejects JSON-wrapped connection output", async () => {
-    const t = task(); let body = xml;
+    const t = task(); t.input = { ...t.input, rules: ["Let the owner authenticate directly."] }; let body = xml;
     const fetcher = vi.fn(async (_url: string | URL | Request, init?: RequestInit) => {
       const sent = JSON.parse(init!.body as string); expect(sent.to_number).toBe(t.to); expect(sent.conversation_initiation_client_data.user_id).toBe(t.id);
+      expect(sent.conversation_initiation_client_data.dynamic_variables).toMatchObject({ owner_join: "when_live_agent", rules: JSON.stringify(t.input.rules) });
+      expect(sent.conversation_initiation_client_data.conversation_config_override).toEqual({ conversation: { max_duration_seconds: 900 } });
       return new Response(body, { headers: { "Content-Type": "text/plain" } });
     });
     const p = new LiveConferenceProviders({ ELEVENLABS_API_KEY: "synthetic" } as Env, conferenceConfig, fetcher);

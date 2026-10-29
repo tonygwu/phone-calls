@@ -13,7 +13,8 @@ export const startSchema = z.strictObject({
   recipient: z.union([z.literal("self"), usPhone]),
   owner_join: z.enum(["disabled", "when_needed", "when_live_agent"]).optional().describe("Enable a conference that keeps the assistant on the call. when_live_agent adds the owner after a live support representative answers; when_needed adds the owner if their involvement is required. Omit or use disabled for an ordinary call. Requires conference setup. The owner must press 1 to join."),
   objective: text(2000),
-  context: text(12000).describe("Facts needed for the call, including dates and timezone. Do not supply credentials, one-time codes, or unnecessary private information."),
+  context: text(12000).describe("Short factual notes for the call, including dates and timezone. Keep behavioral instructions in rules. These notes are background, not a script. Do not supply credentials, one-time codes, or unnecessary private information."),
+  rules: z.array(text(500)).max(20).optional().describe("Optional short imperative rules to follow silently, never read aloud. Put lookup, ownership, completion and reviewer guardrails here, separate from facts. At most 20 rules of 500 characters each."),
   success_criteria: z.array(text(1000)).min(1).max(10),
   constraints: z.strictObject({
     permitted_commitments: z.array(text(1000)).max(20),

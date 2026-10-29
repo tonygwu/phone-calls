@@ -22,7 +22,15 @@ it("exposes four tools and routes independent start requests through the real HT
   const list = await rpc("tools/list", {});
   expect(list.result.tools.map((t: { name: string }) => t.name)).toEqual(["phone_calls_start_call", "phone_calls_get_call", "phone_calls_list_calls", "phone_calls_cancel_call"]);
   expect(list.result.tools[0].annotations.idempotentHint).toBe(false);
+  expect(list.result.tools[0].inputSchema.properties.rules.maxItems).toBe(20);
+  expect(list.result.tools[0].inputSchema.properties.rules.items.maxLength).toBe(500);
   expect(invoke).not.toHaveBeenCalled();
   await rpc("tools/call", { name: "phone_calls_start_call", arguments: input });
   expect(invoke).toHaveBeenCalledWith("start", input);
+  const withRules = { ...input, rules: ["Answer only the question asked."] };
+  await rpc("tools/call", { name: "phone_calls_start_call", arguments: withRules });
+  expect(invoke).toHaveBeenCalledWith("start", withRules);
+  const withOwner = { ...withRules, task_type: "support", recipient: "+12125550123", owner_join: "when_live_agent" };
+  await rpc("tools/call", { name: "phone_calls_start_call", arguments: withOwner });
+  expect(invoke).toHaveBeenCalledWith("start", withOwner);
 });

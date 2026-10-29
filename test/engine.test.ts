@@ -5,7 +5,7 @@ import { SqlStore } from "../src/store";
 import type { Env } from "../src/config";
 import { DAY, RETENTION, startSchema } from "../src/contracts";
 import { applyConversation, applyTwilio, correlate, LiveProviders } from "../src/providers";
-import { dispatchBody } from "../src/agent";
+import { dispatchBody, REMINDER_PROMPT } from "../src/agent";
 import { cfg, input, NOW, fakeProviders, conversation } from "./fixtures";
 
 async function scenario(fn: (e: CallEngine, p: ReturnType<typeof fakeProviders>, advance: (n: number) => void) => Promise<void>) {
@@ -161,7 +161,7 @@ describe("retention, pagination and conversation outcomes", () => {
     const t = e.require(idOf(await e.start(input))); const body = dispatchBody(t, cfg);
     expect(body.call_recording_enabled).toBe(false); expect(body.telephony_call_config.ringing_timeout_secs).toBe(60);
     expect(body.conversation_initiation_client_data.user_id).toBe(t.id);
-    expect(body.conversation_initiation_client_data.conversation_config_override).toEqual({ conversation: { max_duration_seconds: 180 } });
+    expect(body.conversation_initiation_client_data.conversation_config_override).toEqual({ agent: { prompt: { prompt: REMINDER_PROMPT } }, conversation: { max_duration_seconds: 180 } });
   }));
 });
 

@@ -1,0 +1,209 @@
+✔ agent update diffs prompt precisely and preserves provider defaults (1.315666ms)
+✔ agent fingerprint normalizes only the known null analysis field (11.471792ms)
+✔ reviewed update PATCHes only changed prompt and reads back exact identity (21.464875ms)
+✔ agent update refuses no-review before PATCH (3.9445ms)
+✔ agent update refuses review-hash before PATCH (3.607708ms)
+✔ agent update refuses agent-drift before PATCH (3.084459ms)
+✔ agent update refuses account-drift before PATCH (2.474208ms)
+✔ agent update refuses selected-config-drift before PATCH (2.442041ms)
+✔ uncertain PATCH cannot repeat, and read-only readback reconciles it (5.235875ms)
+✔ lost webhook is a failed readback and cannot be reconciled as success (5.130542ms)
+✔ wrong agent identity fails plan with zero PATCH calls (1.5485ms)
+✔ preservation rejects workflow changes outside the desired definition (0.293291ms)
+✖ CLI accepts permission-only solely as an explicit plan flag (0.120334ms)
+✖ default plan explicitly binds the full update scope (4.516333ms)
+✖ permission-only plan applies one permission and readback does not claim the prompt changed (3.103333ms)
+✖ apply and readback refuse caller-supplied scopes before provider requests (1.956333ms)
+✖ a changed scope cannot reuse a plan hash (3.85625ms)
+✖ a rehashed full plan cannot reuse permission-only review (3.094125ms)
+✔ permission-only update retains the agent-drift guard (3.278208ms)
+✔ permission-only update retains the account-drift guard (2.575708ms)
+✔ permission-only update retains the unmanaged-permission guard (3.543ms)
+✖ uncertain permission-only PATCH reconciles by saved scope without updating the prompt (6.730333ms)
+✔ saved plan with missing scope fails instead of defaulting to full (2.457708ms)
+✔ saved plan with unknown scope fails instead of defaulting to full (2.516042ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 17
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 291.460667
+
+✖ failing tests:
+
+test at test/agent-update.test.mjs:151:1
+✖ CLI accepts permission-only solely as an explicit plan flag (0.120334ms)
+  TypeError: parseAgentUpdateArguments is not a function
+      at TestContext.<anonymous> (file:///private/tmp/phone-staged-agent-update/test/agent-update.test.mjs:153:20)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7)
+
+test at test/agent-update.test.mjs:162:1
+✖ default plan explicitly binds the full update scope (4.516333ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + undefined
+  - 'full'
+
+      at TestContext.<anonymous> (file:///private/tmp/phone-staged-agent-update/test/agent-update.test.mjs:165:12)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'full',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test/agent-update.test.mjs:169:1
+✖ permission-only plan applies one permission and readback does not claim the prompt changed (3.103333ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + undefined
+  - 'permission-only'
+
+      at TestContext.<anonymous> (file:///private/tmp/phone-staged-agent-update/test/agent-update.test.mjs:175:12)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'permission-only',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test/agent-update.test.mjs:198:1
+✖ apply and readback refuse caller-supplied scopes before provider requests (1.956333ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /scope.*plan/i. Input:
+
+  "Error: ENOENT: no such file or directory, open '/var/folders/rl/fd44k0053xq4qzrnx27t3p0m0000gn/T/agent-update-test-tVOTVF/private/agent-update/plan.json'"
+
+      at async TestContext.<anonymous> (file:///private/tmp/phone-staged-agent-update/test/agent-update.test.mjs:200:47)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: Error: ENOENT: no such file or directory, open '/var/folders/rl/fd44k0053xq4qzrnx27t3p0m0000gn/T/agent-update-test-tVOTVF/private/agent-update/plan.json'
+        at readFileSync (node:fs:484:20)
+        at read (/private/tmp/phone-staged-agent-update/scripts/agent-update.ts:92:45)
+        at runAgentUpdate (/private/tmp/phone-staged-agent-update/scripts/agent-update.ts:138:23)
+        at async waitForActual (node:assert:646:5)
+        at async strict.rejects (node:assert:769:25)
+        at async TestContext.<anonymous> (file:///private/tmp/phone-staged-agent-update/test/agent-update.test.mjs:200:47)
+        at async Test.run (node:internal/test_runner/test:1404:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:969:7),
+    expected: /scope.*plan/i,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at test/agent-update.test.mjs:205:1
+✖ a changed scope cannot reuse a plan hash (3.85625ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /Plan hash/. Input:
+
+  '[\n' +
+    '  {\n' +
+    '    "code": "unrecognized_keys",\n' +
+    '    "keys": [\n' +
+    '      "scope"\n' +
+    '    ],\n' +
+    '    "path": [],\n' +
+    '    "message": "Unrecognized key: \\"scope\\""\n' +
+    '  }\n' +
+    ']'
+
+      at async TestContext.<anonymous> (file:///private/tmp/phone-staged-agent-update/test/agent-update.test.mjs:211:5)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: ZodError: [
+      {
+        "code": "unrecognized_keys",
+        "keys": [
+          "scope"
+        ],
+        "path": [],
+        "message": "Unrecognized key: \"scope\""
+      }
+    ]
+        at runAgentUpdate (/private/tmp/phone-staged-agent-update/scripts/agent-update.ts:139:29)
+        at async waitForActual (node:assert:646:5)
+        at async strict.rejects (node:assert:769:25)
+        at async TestContext.<anonymous> (file:///private/tmp/phone-staged-agent-update/test/agent-update.test.mjs:211:5)
+        at async Test.run (node:internal/test_runner/test:1404:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:969:7),
+    expected: /Plan hash/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at test/agent-update.test.mjs:216:1
+✖ a rehashed full plan cannot reuse permission-only review (3.094125ms)
+  AssertionError [ERR_ASSERTION]: The input did not match the regular expression /fresh ship review/. Input:
+
+  '[\n' +
+    '  {\n' +
+    '    "code": "unrecognized_keys",\n' +
+    '    "keys": [\n' +
+    '      "scope"\n' +
+    '    ],\n' +
+    '    "path": [],\n' +
+    '    "message": "Unrecognized key: \\"scope\\""\n' +
+    '  }\n' +
+    ']'
+
+      at async TestContext.<anonymous> (file:///private/tmp/phone-staged-agent-update/test/agent-update.test.mjs:227:5)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: ZodError: [
+      {
+        "code": "unrecognized_keys",
+        "keys": [
+          "scope"
+        ],
+        "path": [],
+        "message": "Unrecognized key: \"scope\""
+      }
+    ]
+        at runAgentUpdate (/private/tmp/phone-staged-agent-update/scripts/agent-update.ts:139:29)
+        at async waitForActual (node:assert:646:5)
+        at async strict.rejects (node:assert:769:25)
+        at async TestContext.<anonymous> (file:///private/tmp/phone-staged-agent-update/test/agent-update.test.mjs:227:5)
+        at async Test.run (node:internal/test_runner/test:1404:7)
+        at async Test.processPendingSubtests (node:internal/test_runner/test:969:7),
+    expected: /fresh ship review/,
+    operator: 'rejects',
+    diff: 'simple'
+  }
+
+test at test/agent-update.test.mjs:254:1
+✖ uncertain permission-only PATCH reconciles by saved scope without updating the prompt (6.730333ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + undefined
+  - 'permission-only'
+
+      at TestContext.<anonymous> (file:///private/tmp/phone-staged-agent-update/test/agent-update.test.mjs:263:12)
+      at async Test.run (node:internal/test_runner/test:1404:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: undefined,
+    expected: 'permission-only',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

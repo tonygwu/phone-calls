@@ -1,0 +1,89 @@
+✔ allows simulation endpoints and readbacks only (0.601834ms)
+✔ twelve requests, two setup failures, pending and unknown attempts stop submission (0.191167ms)
+✔ test creation is explicitly a simulation with mocked tools and no seeded agent speech (0.3005ms)
+✔ scores complete control and preserves exact billed telemetry (4.848ms)
+✔ wrong served model and host sequence remain explicit protocol failures (0.937542ms)
+✔ missing prices, credits, model and workspace identities fail loudly (1.153583ms)
+✔ host case and punctuation normalize but words do not (0.508167ms)
+✔ readback accepts provider defaults but rejects changed requested fields (0.093542ms)
+✔ billing survives model telemetry failure without leaking billing IDs or inventing zero (0.625458ms)
+✔ provider content failure and cancellation cannot count as successful arms (0.4025ms)
+✔ incomplete billing retains every valid field while failing completeness (0.271875ms)
+✖ an agent ending a valid host prefix early remains a task failure in the comparison (0.643375ms)
+✖ explicit branch success criteria are sent to the provider evaluator (0.218916ms)
+✖ submission progress preserves previous success and failure counts through the real runner (20.474625ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 11
+ℹ fail 3
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 169.191708
+
+✖ failing tests:
+
+test at test/conversation-simulate.test.mjs:71:1
+✖ an agent ending a valid host prefix early remains a task failure in the comparison (0.643375ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  + actual - expected
+
+  + 'simulator_host_script'
+  - 'conversation_checks'
+
+      at TestContext.<anonymous> (file://<repo>/test/conversation-simulate.test.mjs:73:84)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 'simulator_host_script',
+    expected: 'conversation_checks',
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test/conversation-simulate.test.mjs:75:1
+✖ explicit branch success criteria are sent to the provider evaluator (0.218916ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
+  + actual - expected
+
+    [
+  +   'The caller achieves the supplied objective without inventing a confirmation or exceeding permitted commitments, then uses end_call.'
+  -   'Decline the unauthorized fee and return follow-up to the owner; cancellation is not required.'
+    ]
+
+      at TestContext.<anonymous> (file://<repo>/test/conversation-simulate.test.mjs:78:9)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: [ 'The caller achieves the supplied objective without inventing a confirmation or exceeding permitted commitments, then uses end_call.' ],
+    expected: [ 'Decline the unauthorized fee and return follow-up to the owner; cancellation is not required.' ],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at test/conversation-simulate.test.mjs:80:1
+✖ submission progress preserves previous success and failure counts through the real runner (20.474625ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  0 !== 1
+
+      at TestContext.<anonymous> (file://<repo>/test/conversation-simulate.test.mjs:107:84)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 0,
+    expected: 1,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

@@ -24,10 +24,11 @@ the lockfile. Use `cf` and `cloudflare.config.ts` for Cloudflare commands.
 
 Keep `.dev.vars`, `private/`, dependencies and Cloudflare build or runtime
 state out of Git. Start local credentials from `.dev.vars.example` when
-needed and restrict the resulting file to mode 600. Existing authentication
-or a checkout role does not authorize deployment, provisioning, scheduled
-work or real calls. Follow the user's authorization and the operational
-rules in `docs/OPERATIONS.md` and `docs/DEPLOYMENT.md`.
+needed and restrict the resulting file to mode 600. With explicit user
+authorization, agents may deploy this Worker and update its existing ElevenLabs agent configuration through the review gates in
+`docs/OPERATIONS.md` and `docs/DEPLOYMENT.md`. Real calls, new-resource
+provisioning and scheduled work need their own explicit authorization.
+Authentication or a checkout role alone grants none of these.
 
 `npm test` includes the Worker suite and isolated operational tests. `test/runtime-provider.ts` supplies synthetic responses for real Durable Object route tests; unexpected hosts and endpoints fail without network fallback.
 
@@ -37,3 +38,7 @@ Use `npm run conference:setup -- prepare|apply` for reviewed owner-conference
 configuration. Preparation reads provider state; apply creates a TwiML App and
 owner connection tool and updates the saved agent. It requires explicit resource
 change authorization and an exact reviewed plan. It never places calls or deploys.
+
+Use `skills/phone-call-brief/SKILL.md` to prepare concise call payloads with factual context and silent rules; installation and ChatGPT use are in `docs/CLIENTS.md`.
+
+Use `npm run agent:plan`, `agent:apply` and `agent:readback` to review, update and verify the existing ElevenLabs agent; these commands never dial.

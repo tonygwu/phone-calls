@@ -139,5 +139,11 @@
       "simulation_max_turns": 12
     }
   ],
-  "results_file": "docs/evidence/conversation-simulations.json"
+  "results_file": "docs/evidence/conversation-simulations.json",
+  "executable_fixtures": [
+    "evals/cancellation-simulation.json",
+    "evals/reminder-simulation.json",
+    "evals/authority-simulation.json",
+    "evals/authentication-simulation.json"
+  ]
 }
