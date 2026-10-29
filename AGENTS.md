@@ -32,3 +32,8 @@ rules in `docs/OPERATIONS.md` and `docs/DEPLOYMENT.md`.
 `npm test` includes the Worker suite and isolated operational tests. `test/runtime-provider.ts` supplies synthetic responses for real Durable Object route tests; unexpected hosts and endpoints fail without network fallback.
 
 Use `npm run simulate -- plan|run|collect|summary` for reviewed conversation simulations. See `docs/EVALUATION.md`; this tool cannot place telephone calls.
+
+Use `npm run conference:setup -- prepare|apply` for reviewed owner-conference
+configuration. Preparation reads provider state; apply creates a TwiML App and
+owner connection tool and updates the saved agent. It requires explicit resource
+change authorization and an exact reviewed plan. It never places calls or deploys.
