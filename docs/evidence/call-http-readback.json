@@ -1,0 +1,50 @@
+{
+  "command": "node --env-file-if-exists=.dev.vars private/check-call-http.mjs",
+  "attempted": 8,
+  "succeeded": 8,
+  "failed": 0,
+  "failureCategory": null,
+  "callsPlaced": 0,
+  "results": [
+    {
+      "name": "mcp-auth",
+      "ok": true,
+      "status": 401
+    },
+    {
+      "name": "recording-auth",
+      "ok": true,
+      "status": 401
+    },
+    {
+      "name": "resource-metadata",
+      "ok": true,
+      "status": 200
+    },
+    {
+      "name": "eleven-no-signature",
+      "ok": true,
+      "status": 401
+    },
+    {
+      "name": "twilio-no-signature",
+      "ok": true,
+      "status": 401
+    },
+    {
+      "name": "callback-query",
+      "ok": true,
+      "status": 401
+    },
+    {
+      "name": "callback-descendant",
+      "ok": true,
+      "status": 401
+    },
+    {
+      "name": "twilio-synthetic-reject",
+      "ok": true,
+      "status": 200
+    }
+  ]
+}

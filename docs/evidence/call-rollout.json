@@ -1,0 +1,140 @@
+{
+  "workerDeploy": {
+    "command": "npm run deploy",
+    "attempted": 1,
+    "succeeded": 1,
+    "failed": 0,
+    "version": "481e78f1-d537-453c-96c6-35715cbd3857"
+  },
+  "workerReadback": {
+    "attempted": 2,
+    "succeeded": 1,
+    "failed": 1,
+    "failureCategory": "local_response_buffer",
+    "finalChecksPassed": true
+  },
+  "agentPatches": {
+    "attempted": 2,
+    "succeeded": 2,
+    "failed": 0,
+    "scope": "One permission preparation and one full prompt/model update."
+  },
+  "agentReadback": {
+    "attempted": 2,
+    "succeeded": 2,
+    "failed": 0
+  },
+  "mcpComparison": {
+    "attempted": 3,
+    "succeeded": 1,
+    "failed": 2,
+    "failureCategories": [
+      "local_sdk_json_representation",
+      "local_helper_declaration"
+    ],
+    "finalChecksPassed": true
+  },
+  "httpBoundaries": {
+    "command": "node --env-file-if-exists=.dev.vars private/check-call-http.mjs",
+    "attempted": 8,
+    "succeeded": 8,
+    "failed": 0,
+    "failureCategory": null,
+    "callsPlaced": 0,
+    "results": [
+      {
+        "name": "mcp-auth",
+        "ok": true,
+        "status": 401
+      },
+      {
+        "name": "recording-auth",
+        "ok": true,
+        "status": 401
+      },
+      {
+        "name": "resource-metadata",
+        "ok": true,
+        "status": 200
+      },
+      {
+        "name": "eleven-no-signature",
+        "ok": true,
+        "status": 401
+      },
+      {
+        "name": "twilio-no-signature",
+        "ok": true,
+        "status": 401
+      },
+      {
+        "name": "callback-query",
+        "ok": true,
+        "status": 401
+      },
+      {
+        "name": "callback-descendant",
+        "ok": true,
+        "status": 401
+      },
+      {
+        "name": "twilio-synthetic-reject",
+        "ok": true,
+        "status": 200
+      }
+    ]
+  },
+  "history": {
+    "command": "phone_calls_list_calls({limit:1})",
+    "attempted": 1,
+    "succeeded": 1,
+    "failed": 0,
+    "latestCallAndTimestampUnchanged": true,
+    "scope": "Most recent record only; namespace identity independently matches.",
+    "callsPlaced": 0
+  },
+  "simulations": {
+    "attempted": 14,
+    "succeeded": 6,
+    "failed": 8,
+    "setupFailures": 0,
+    "credits": 2697,
+    "providerReportedUsd": 0.5396520949999999,
+    "failureTaxonomy": {
+      "conversation_checks": 7,
+      "provider_content_evaluation": 1
+    },
+    "excludedByArm": {
+      "before": 0,
+      "after": 0,
+      "after-turn-rules": 0,
+      "after-gpt41": 0,
+      "after-final": 0,
+      "reminder-final": 0,
+      "authority-final": 0,
+      "authentication-final": 0,
+      "guarded-cancellation": 0,
+      "modern-cancellation": 0,
+      "modern-authority": 0,
+      "modern-reminder": 0,
+      "dedicated-reminder-a": 0,
+      "dedicated-reminder-b": 0
+    }
+  },
+  "realCallsPlaced": 0,
+  "cachedChatGptInstructionsNeedRefresh": true,
+  "reviews": {
+    "source": "ship",
+    "updater": "ship",
+    "permissionPreparation": "ship",
+    "workerDeploy": "ship",
+    "fullAgentUpdate": "ship"
+  },
+  "limitations": [
+    "Small single-run cases, not a reliability rate.",
+    "Model and requested reasoning changed together for GPT-6.1 Sol. Reasoning actually served is not echoed.",
+    "Exact served prompt bytes are not echoed by provider.",
+    "Literal numeric date/time patterns omit spoken-number forms; full transcripts were inspected.",
+    "Final model password-refusal scenario is not executed within the fourteen-run cap; the two extra requests repeat the focused reminder test."
+  ]
+}

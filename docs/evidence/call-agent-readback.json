@@ -1,0 +1,59 @@
+{
+  "commands": [
+    "npm run agent:plan -- --permission-only",
+    "npm run agent:apply",
+    "npm run agent:readback",
+    "npm run agent:plan",
+    "npm run agent:apply",
+    "npm run agent:readback"
+  ],
+  "configurationFingerprint": "408f4b999844c39db786810a88aa56f263aec1794a4e1a7812560df4985d6d67",
+  "promptSha256": "2e894298e575c62f02bbbc71acdaaebfdb1378a0ed604b5bac221ccc4eece3e7",
+  "desiredSha256": "a7da1b2ac4d1c6c7e39a00363b64e57ebfb0ac7af2f5aa896aff899ca811e128",
+  "promptMatchesRepo": true,
+  "managedConfigMatchesRepo": true,
+  "agentAndMainBranchMatch": true,
+  "unmanagedSettingsPreserved": true,
+  "configuredModel": "gpt-6.1-sol",
+  "configuredReasoning": "low",
+  "backupPreference": "disabled",
+  "promptOverrideAllowed": true,
+  "permissionPreparation": {
+    "planSha256": "dd588e107154674a73e54cf486abd2ef2962003560de4944ba3a14296ba0b2dc",
+    "patch": {
+      "attempted": 1,
+      "succeeded": 1,
+      "failed": 0
+    },
+    "providerRequests": {
+      "attempted": 4,
+      "succeeded": 4,
+      "failed": 0
+    },
+    "readbackRequests": {
+      "attempted": 2,
+      "succeeded": 2,
+      "failed": 0
+    }
+  },
+  "fullUpdate": {
+    "planSha256": "29e5b8fd1dc99d88b9beb509f884319c70c3f4158463de95489c27b9613a0d78",
+    "patch": {
+      "attempted": 1,
+      "succeeded": 1,
+      "failed": 0
+    },
+    "providerRequests": {
+      "attempted": 4,
+      "succeeded": 4,
+      "failed": 0
+    },
+    "readbackRequests": {
+      "attempted": 2,
+      "succeeded": 2,
+      "failed": 0
+    }
+  },
+  "callsPlaced": 0,
+  "limitation": "Configuration readback proves the selected agent settings; served model identity comes from the retained text simulations. No real call was made."
+}

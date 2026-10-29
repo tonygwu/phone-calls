@@ -1,0 +1,23 @@
+{
+  "responseLimitBytes": 33554432,
+  "priorReadbackFailure": {
+    "attempted": 3,
+    "succeeded": 2,
+    "failed": 1,
+    "failureCategory": "local_response_buffer"
+  },
+  "command": "node private/verify-call-worker.mjs",
+  "attempted": 3,
+  "succeeded": 3,
+  "failed": 0,
+  "version": "481e78f1-d537-453c-96c6-35715cbd3857",
+  "deploymentCreatedAt": "2026-10-29T19:25:45.295729Z",
+  "buildSha256": "853f7195d8f80f621b240e063306ad24ce32cb8998ef58758716485a9fb9c257",
+  "deployedBytes": 1136671,
+  "moduleMatchesReviewedBuild": true,
+  "namespaceMatches": true,
+  "fourSecretBindingsMatch": true,
+  "customDomainMatches": true,
+  "alternateUrls": [],
+  "callsPlaced": 0
+}

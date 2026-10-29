@@ -1,0 +1,52 @@
+{
+  "moduleBuffer": {
+    "attempted": 3,
+    "succeeded": 2,
+    "failed": 1,
+    "failureCategory": "local_response_buffer",
+    "cause": "local_response_buffer",
+    "before": {
+      "status": null,
+      "error": "ENOBUFS",
+      "stdoutBytes": 1114112
+    },
+    "after": {
+      "status": 0,
+      "error": null,
+      "stdoutBytes": 2097152
+    },
+    "partialProviderBytes": 1114112
+  },
+  "mcpWireRepresentation": {
+    "undefinedLocalSdkFields": [
+      ".tools.0.title",
+      ".tools.0.icons",
+      ".tools.0.execution",
+      ".tools.0._meta",
+      ".tools.1.title",
+      ".tools.1.icons",
+      ".tools.1.execution",
+      ".tools.1._meta",
+      ".tools.2.title",
+      ".tools.2.icons",
+      ".tools.2.execution",
+      ".tools.2._meta",
+      ".tools.3.title",
+      ".tools.3.icons",
+      ".tools.3.execution",
+      ".tools.3._meta"
+    ],
+    "before": {
+      "toolsMatch": false
+    },
+    "after": {
+      "toolsMatch": true
+    },
+    "normalization": "JSON serialization omits optional undefined properties. Compare the exact JSON wire representation, not the in-memory SDK object."
+  },
+  "helperDeclaration": {
+    "before": "ReferenceError: expectedInstructions is not defined",
+    "after": "instructionsMatch:true; toolsMatch:true; rulesInSchema:true",
+    "change": "Moved a comment to its own line so the following declaration executes."
+  }
+}

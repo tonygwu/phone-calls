@@ -1,0 +1,65 @@
+> phone-calls-mcp@0.1.0 agent:apply
+> node --env-file-if-exists=.dev.vars --import tsx scripts/agent-update.ts apply
+
+{
+  mode: 'apply',
+  scope: 'permission-only',
+  prompt_override_permission_enabled: true,
+  managed_config_matches_plan: true,
+  beforeSha256: '88f0c53bac552535504cd65fdc7702e5c37470588e19c73fe4cb5a32281c3a69',
+  afterSha256: 'dbea51cb6bb6e9c9c3a47122cf109c74f1695458946f9d794191c3c4d78bd209',
+  attempted: 4,
+  succeeded: 4,
+  failed: 0,
+  calls_placed: 0,
+  mutations: 1
+}
+
+> phone-calls-mcp@0.1.0 agent:readback
+> node --env-file-if-exists=.dev.vars --import tsx scripts/agent-update.ts readback
+
+{
+  mode: 'readback',
+  scope: 'permission-only',
+  prompt_override_permission_enabled: true,
+  managed_config_matches_plan: true,
+  configSha256: 'dbea51cb6bb6e9c9c3a47122cf109c74f1695458946f9d794191c3c4d78bd209',
+  attempted: 2,
+  succeeded: 2,
+  failed: 0,
+  calls_placed: 0,
+  mutations: 0
+}
+
+> phone-calls-mcp@0.1.0 agent:apply
+> node --env-file-if-exists=.dev.vars --import tsx scripts/agent-update.ts apply
+
+{
+  mode: 'apply',
+  scope: 'full',
+  prompt_matches_repo: true,
+  managed_config_matches_repo: true,
+  beforeSha256: 'dbea51cb6bb6e9c9c3a47122cf109c74f1695458946f9d794191c3c4d78bd209',
+  afterSha256: '408f4b999844c39db786810a88aa56f263aec1794a4e1a7812560df4985d6d67',
+  attempted: 4,
+  succeeded: 4,
+  failed: 0,
+  calls_placed: 0,
+  mutations: 1
+}
+
+> phone-calls-mcp@0.1.0 agent:readback
+> node --env-file-if-exists=.dev.vars --import tsx scripts/agent-update.ts readback
+
+{
+  mode: 'readback',
+  scope: 'full',
+  prompt_matches_repo: true,
+  managed_config_matches_repo: true,
+  configSha256: '408f4b999844c39db786810a88aa56f263aec1794a4e1a7812560df4985d6d67',
+  attempted: 2,
+  succeeded: 2,
+  failed: 0,
+  calls_placed: 0,
+  mutations: 0
+}
