@@ -10,6 +10,7 @@ export const configSchema = z.strictObject({
   selfNumber: usPhone, callbackNumber: usPhone,
   twilioAccountSid: z.string().regex(/^AC[a-fA-F0-9]{32}$/),
   twilioNumberSid: z.string().regex(/^PN[a-fA-F0-9]{32}$/),
+  twilioApplicationSid: z.string().regex(/^AP[a-fA-F0-9]{32}$/).optional(),
   fromNumber: usPhone,
   elevenAgentId: z.string().min(1), elevenPhoneId: z.string().min(1), voiceId: z.string().min(1),
 });

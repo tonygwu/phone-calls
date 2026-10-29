@@ -11,6 +11,7 @@ export const startSchema = z.strictObject({
   request_id: text(128).regex(/^[a-zA-Z0-9._:-]+$/).optional().describe("Optional client label accepted for existing clients. It is ignored: every invocation starts a new call, including repeated labels."),
   task_type: z.enum(["reminder", "booking", "support", "general"]),
   recipient: z.union([z.literal("self"), usPhone]),
+  owner_join: z.enum(["disabled", "when_needed", "when_live_agent"]).optional().describe("Enable a conference that keeps the assistant on the call. when_live_agent adds the owner after a live support representative answers; when_needed adds the owner if their involvement is required. Omit or use disabled for an ordinary call. Requires conference setup. The owner must press 1 to join."),
   objective: text(2000),
   context: text(12000).describe("Facts needed for the call, including dates and timezone. Do not supply credentials, one-time codes, or unnecessary private information."),
   success_criteria: z.array(text(1000)).min(1).max(10),
@@ -48,6 +49,19 @@ export const terminal = new Set(["completed", "busy", "no-answer", "canceled", "
 export type PhoneStatus = "pending" | "dispatching" | "dispatch_unknown" | "queued" | "ringing" | "in-progress" | "completed" | "busy" | "no-answer" | "canceled" | "failed" | "not_dispatched";
 export type Outcome = "pending" | "unknown" | "voicemail_attempted" | "delivered_to_person" | "completed" | "partial" | "failed" | "needs_user_input";
 export type TranscriptTurn = { role: "user" | "agent"; message: string | null; time_in_call_secs: number; tool_calls?: unknown[] | null; tool_results?: unknown[] | null };
+export type ConferenceRole = "business" | "assistant" | "owner";
+export type ConferenceLeg = { status: PhoneStatus | "not_started"; sid?: string; costMicros?: number; observation?: number };
+export interface ConferenceState {
+  token: string;
+  sid?: string;
+  closed: boolean;
+  closing: boolean;
+  ownerAccepted: boolean;
+  registration: "not_started" | "dispatching" | "done" | "unknown";
+  twiml?: string;
+  legs: Record<ConferenceRole, ConferenceLeg>;
+}
+export const activeTask = (task: Task) => task.conference ? !task.conference.closed : !terminal.has(task.telephone);
 export interface Task {
   id: string; input: StartInput; to: string;
   created: number; expires: number; duration: number;
@@ -60,6 +74,7 @@ export interface Task {
   providerStart?: number; providerDuration?: number;
   elevenStatus?: "initiated" | "in-progress" | "processing" | "done" | "failed";
   elevenObservation?: number; twilioObservation?: number;
+  conference?: ConferenceState;
 }
 export async function digest(value: string) {
   return [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value)))].map(n => n.toString(16).padStart(2, "0")).join("");

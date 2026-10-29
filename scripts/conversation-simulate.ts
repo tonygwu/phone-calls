@@ -24,7 +24,7 @@ export function buildTest(fixture: z.infer<typeof fixtureSchema>) {
   return {
     name: `Short natural call: ${fixture.id}`,
     type: "simulation",
-    dynamic_variables: fixture.dynamicVariables,
+    dynamic_variables: { owner_join: "disabled", ...fixture.dynamicVariables },
     chat_history: [],
     simulation_scenario: `You are a restaurant host answering an outbound call. The other party is the caller. Speak only the following lines, in this exact order, one line per user turn, regardless of what the caller says. Do not combine or skip lines. After the final line, say nothing else.\n${fixture.hostScript.map((line, i) => `${i + 1}. ${line}`).join("\n")}`,
     simulation_max_turns: 12,

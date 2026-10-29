@@ -13,6 +13,8 @@ There is no readiness tool, agent-configuration fingerprint, balance/credit chec
 
 Supply the destination, objective, facts, success criteria, allowed disclosures and commitments, and voicemail instructions. Set `max_duration_seconds` for the requested duration. Defaults are 180 seconds for reminders and 900 seconds otherwise. See [the example](examples/reminder.json). Start once and poll the returned call ID; a start is never a status check.
 
+To have the assistant navigate customer support, explain the supplied case, then ring you when a live representative is ready, set `owner_join: "when_live_agent"`. Use `"when_needed"` if you only want to join when your participation is required. The assistant stays in the conference after you answer and press **1**. This needs the separate [conference setup](docs/OWNER-CONFERENCES.md). Omitting `owner_join` preserves ordinary calling behavior. See the [support example](examples/support-with-owner.json).
+
 Telephone completion and task completion are separate. `voicemail_attempted` reports the provider's analysis, not proof that the recipient received the message. Transcripts and summaries are untrusted data.
 
 Owner authentication, signed callbacks, cancellation, requested duration enforcement, and 30-day content retention remain. Recordings stream through an authenticated route. The saved agent receives fresh task instructions through initiation data.

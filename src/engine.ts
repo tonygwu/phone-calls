@@ -1,18 +1,27 @@
-import { CallError, DAY, RETENTION, publicError, startSchema, terminal, type Task } from "./contracts";
+import { activeTask, CallError, DAY, RETENTION, publicError, startSchema, terminal, type Task } from "./contracts";
 import type { Config } from "./config";
 import { applyConversation, applyTwilio, correlate, type Providers } from "./providers";
 import type { Store } from "./store";
+import { ConferenceController, newConference } from "./conference";
+import type { ConferenceProviders } from "./conference-provider";
 
 // Provider polling is 15 seconds while active, 60 seconds for delayed final
 // analysis, and 1 hour after a day. Polling observes existing calls.
 export class CallEngine {
-  constructor(readonly store: Store, readonly providers: Providers, readonly config: Config, private now: () => number = Date.now) {}
+  readonly conferences?: ConferenceController;
+  constructor(readonly store: Store, readonly providers: Providers, readonly config: Config, private now: () => number = Date.now, conferenceProviders?: ConferenceProviders) {
+    if (conferenceProviders) this.conferences = new ConferenceController(store, conferenceProviders, providers, config, now);
+  }
   async start(raw: unknown) {
     const input = startSchema.parse(raw);
     const to = input.recipient === "self" ? this.config.selfNumber : input.recipient;
+    const join = input.owner_join !== undefined && input.owner_join !== "disabled";
+    if (join && (to === this.config.selfNumber || input.task_type === "reminder")) throw new CallError("INVALID_OWNER_JOIN", "Owner joining requires a call to someone else and cannot be used for reminders.");
+    if (join && (!this.config.twilioApplicationSid || !this.conferences)) throw new CallError("SETUP_REQUIRED", "Complete the reviewed conference setup before enabling owner joining.", false, 503);
     const duration = input.max_duration_seconds ?? (input.task_type === "reminder" ? 180 : 900);
     const now = this.now();
     const task: Task = { id: crypto.randomUUID(), input, to, duration, created: now, expires: now + RETENTION, telephone: "pending", outcome: "pending", cancelRequested: false, nextCheck: now, attempts: 0 };
+    if (join) task.conference = newConference();
     this.store.put(task);
     return this.view(task);
   }
@@ -26,7 +35,10 @@ export class CallEngine {
     this.store.purge(now);
     await Promise.all(this.store.due(now).map(async snapshot => {
       if (snapshot.expires <= now) return;
-      if (snapshot.telephone === "pending") await this.dispatch(snapshot.id);
+      if (snapshot.conference) {
+        if (!this.conferences) throw new CallError("SETUP_REQUIRED", "Conference provider is not configured.", false, 503);
+        await this.conferences.tick(snapshot.id);
+      } else if (snapshot.telephone === "pending") await this.dispatch(snapshot.id);
       else await this.reconcile(snapshot.id);
     }));
     this.store.purge(now);
@@ -74,6 +86,10 @@ export class CallEngine {
   }
   async reconcile(id: string) {
     let task = this.require(id);
+    if (task.conference) {
+      if (!this.conferences) throw new CallError("SETUP_REQUIRED", "Conference provider is not configured.", false, 503);
+      return this.conferences.tick(id);
+    }
     if (task.telephone === "pending" || task.telephone === "not_dispatched") return;
     // A restart after the dispatch marker never sends a second outbound request.
     if (task.telephone === "dispatching") task.telephone = "dispatch_unknown";
@@ -140,6 +156,11 @@ export class CallEngine {
   }
   async cancel(id: string) {
     const task = this.require(id);
+    if (task.conference) {
+      task.cancelRequested = true; this.store.put(task);
+      await this.reconcile(id);
+      return this.view(this.require(id));
+    }
     if (task.telephone === "pending") {
       task.telephone = "not_dispatched"; task.outcome = "failed";
       task.twilioCostMicros = 0; task.elevenCostMicros = 0; task.nextCheck = task.expires;
@@ -157,6 +178,11 @@ export class CallEngine {
     const id = c.user_id ?? c.conversation_initiation_client_data?.user_id;
     if (!id) throw new CallError("CALLBACK_UNCORRELATED", "Callback has no durable task correlation.", false, 409);
     const task = this.require(id);
+    if (task.conference) {
+      if (!this.conferences) throw new CallError("SETUP_REQUIRED", "Conference provider is not configured.", false, 503);
+      this.conferences.observeConversation(id, c, observation);
+      return;
+    }
     correlate(task, c, this.config);
     // A correlated provider identity overrides an earlier no-dispatch conclusion,
     // including a callback arriving after an authentication rejection or cancel.
@@ -175,15 +201,16 @@ export class CallEngine {
     return {
       call_id: task.id, telephone_status: task.telephone, task_outcome: task.outcome,
       created_at: new Date(task.created).toISOString(), expires_at: new Date(task.expires).toISOString(),
-      cancel_requested: task.cancelRequested, termination_confirmed: task.cancelRequested && terminal.has(task.telephone),
+      cancel_requested: task.cancelRequested, termination_confirmed: task.cancelRequested && (task.conference ? task.conference.closed : terminal.has(task.telephone)),
+      ...(task.conference ? { owner_connection: this.conferences?.ownerView(task), conference: { conference_sid: task.conference.sid ?? null, closed: task.conference.closed, participants: Object.fromEntries(Object.entries(task.conference.legs).map(([role, leg]) => [role, { call_sid: leg.sid ?? null, telephone_status: leg.status, cost_usd: leg.costMicros === undefined ? null : leg.costMicros / 1e6 }])) } } : {}),
       summary: task.summary ?? null, confirmation_details: task.confirmation ?? null, unresolved_questions: task.unresolved ?? null,
       evidence: task.evidence ?? null, delivery_verified: false,
       provider: { conversation_id: task.conversationId ?? null, call_sid: task.callSid ?? null },
-      cost: { twilio_usd: task.twilioCostMicros === undefined ? null : task.twilioCostMicros / 1e6, elevenlabs_total_fiat_usd: task.elevenCostMicros === undefined ? null : task.elevenCostMicros / 1e6, note: "Provider-reported amounts when available. These may be provisional and do not enforce a spending limit." },
+      cost: { twilio_usd: task.conference ? null : task.twilioCostMicros === undefined ? null : task.twilioCostMicros / 1e6, elevenlabs_total_fiat_usd: task.elevenCostMicros === undefined ? null : task.elevenCostMicros / 1e6, note: task.conference ? "Participant call charges are reported separately in conference.participants. Twilio conference charges are additional and not included; no total is claimed. Provider amounts may be provisional." : "Provider-reported amounts when available. These may be provisional and do not enforce a spending limit." },
       transcript: includeTranscript && turns ? { turns: turns.slice(offset, offset + limit), total: turns.length, next_offset: offset + limit < turns.length ? offset + limit : null } : null,
       recording_url: task.hasAudio ? `${this.config.publicOrigin}/calls/${task.id}/recording` : null,
       error: task.lastError ?? null,
-      poll_after_seconds: terminal.has(task.telephone) ? 60 : 15,
+      poll_after_seconds: activeTask(task) ? 15 : 60,
     };
   }
 }
