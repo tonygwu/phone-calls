@@ -7,7 +7,7 @@
     "dev": "cf dev",
     "build": "cf build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run && node --import tsx --test test/preflight.test.mjs test/conversation-simulate.test.mjs test/conference-setup.test.mjs",
+    "test": "vitest run && node --import tsx --test test/preflight.test.mjs test/conversation-simulate.test.mjs test/conference-setup.test.mjs test/agent-update.test.mjs",
     "check": "npm run typecheck && npm test && npm run build",
     "deploy": "node scripts/deploy.mjs",
     "preflight": "node --env-file-if-exists=.dev.vars --import tsx scripts/preflight.mjs",
@@ -15,7 +15,10 @@
     "simulate": "node --env-file-if-exists=.dev.vars --import tsx scripts/conversation-simulate.ts",
     "conference:setup": "node --env-file-if-exists=.dev.vars --import tsx scripts/conference-setup.ts",
     "provision:prepare": "node --env-file-if-exists=.dev.vars --import tsx scripts/provision.ts prepare",
-    "provision:apply": "node --env-file-if-exists=.dev.vars --import tsx scripts/provision.ts apply"
+    "provision:apply": "node --env-file-if-exists=.dev.vars --import tsx scripts/provision.ts apply",
+    "agent:plan": "node --env-file-if-exists=.dev.vars --import tsx scripts/agent-update.ts plan",
+    "agent:apply": "node --env-file-if-exists=.dev.vars --import tsx scripts/agent-update.ts apply",
+    "agent:readback": "node --env-file-if-exists=.dev.vars --import tsx scripts/agent-update.ts readback"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.3.1",

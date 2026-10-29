@@ -1,0 +1,33 @@
+{
+  "task_type": "booking",
+  "recipient": "+14155550100",
+  "objective": "Cancel Maya Chen's dinner reservation and matching duplicate entries at Pine Lantern on October 29, 2026.",
+  "context": "- The restaurant is Pine Lantern.\n- The reservation name is Maya Chen.\n- Dinner is Thursday, October 29, at 6:15 in the evening.\n- The restaurant uses Pacific Time.\n- The table is for two people.\n- The booking phone number is 415-555-0142.\n- The confirmation also shows an earlier time of 5:45.",
+  "rules": [
+    "Answer only the question asked and stop to listen.",
+    "During live conversation, use the reservation name first; give the phone number only if asked.",
+    "A booking that cannot be found is not a successful cancellation.",
+    "After the matching booking is canceled, ask once whether any other matching reservation remains that day, and cancel matching duplicates belonging to Maya Chen.",
+    "If the host says only okay, ask a short clarifying question without repeating all identifiers.",
+    "Do not make a new reservation or accept a cancellation fee."
+  ],
+  "success_criteria": [
+    "The host confirms the matching reservation is canceled.",
+    "The host confirms no other matching reservation remains on that date."
+  ],
+  "constraints": {
+    "permitted_commitments": [
+      "Cancel matching reservations belonging to Maya Chen on the supplied date, including matching duplicates."
+    ],
+    "acceptable_alternatives": [],
+    "information_may_disclose": [
+      "Reservation name: Maya Chen.",
+      "Booking phone number: 415-555-0142, only if asked during live conversation; permitted in the supplied voicemail.",
+      "The restaurant, dinner date, local times and party size."
+    ]
+  },
+  "voicemail": {
+    "action": "leave_message",
+    "message": "This is an automated assistant calling for Maya Chen, and this call is recorded. Please cancel the Pine Lantern reservation for two on Thursday, October 29, at 6:15 in the evening, under Maya Chen, phone 415-555-0142. The confirmation also listed 5:45; please check for other matching entries that day. Thank you."
+  }
+}

@@ -1,0 +1,105 @@
+
+> phone-calls-mcp@0.1.0 check
+> npm run typecheck && npm test && npm run build
+
+
+> phone-calls-mcp@0.1.0 typecheck
+> tsc --noEmit
+
+
+> phone-calls-mcp@0.1.0 test
+> vitest run && node --import tsx --test test/preflight.test.mjs test/conversation-simulate.test.mjs test/agent-update.test.mjs
+
+
+ RUN  v4.1.12 /Users/tonygwu/Code/phone-calls/repo-1
+
+ ✓ test/conversation-judge.test.ts (26 tests) 12ms
+ ✓ test/reminder-prompt.test.ts (6 tests) 3ms
+ ✓ test/brief-rules.test.ts (10 tests) 6ms
+ ✓ test/providers.test.ts (3 tests) 10ms
+ ✓ test/mcp.test.ts (1 test) 21ms
+ ✓ test/simplification.test.ts (7 tests) 30ms
+ ✓ test/ledger.test.ts (1 test) 33ms
+ ✓ test/engine.test.ts (36 tests) 98ms
+ ✓ test/security.test.ts (6 tests) 61ms
+
+ Test Files  9 passed (9)
+      Tests  96 passed (96)
+   Start at  12:18:54
+   Duration  3.34s (transform 4.49s, setup 0ms, import 23.29s, tests 274ms, environment 0ms)
+
+✔ agent update diffs prompt precisely and preserves provider defaults (1.024625ms)
+✔ agent fingerprint normalizes only the known null analysis field (8.556083ms)
+✔ reviewed update PATCHes only changed prompt and reads back exact identity (24.893916ms)
+✔ agent update refuses no-review before PATCH (3.179875ms)
+✔ agent update refuses review-hash before PATCH (2.775333ms)
+✔ agent update refuses agent-drift before PATCH (3.446708ms)
+✔ agent update refuses account-drift before PATCH (3.240167ms)
+✔ agent update refuses selected-config-drift before PATCH (2.093625ms)
+✔ uncertain PATCH cannot repeat, and read-only readback reconciles it (4.466583ms)
+✔ lost webhook is a failed readback and cannot be reconciled as success (4.376709ms)
+✔ wrong agent identity fails plan with zero PATCH calls (2.12925ms)
+✔ preservation rejects workflow changes outside the desired definition (0.322ms)
+✔ CLI accepts permission-only solely as an explicit plan flag (0.149959ms)
+✔ default plan explicitly binds the full update scope (1.83525ms)
+✔ permission-only plan applies one permission and readback does not claim the prompt changed (4.58275ms)
+✔ apply and readback refuse caller-supplied scopes before provider requests (0.769875ms)
+✔ a changed scope cannot reuse a plan hash (2.172458ms)
+✔ a rehashed full plan cannot reuse permission-only review (2.395834ms)
+✔ permission-only update retains the agent-drift guard (2.872791ms)
+✔ permission-only update retains the account-drift guard (2.851917ms)
+✔ permission-only update retains the unmanaged-permission guard (3.061166ms)
+✔ uncertain permission-only PATCH reconciles by saved scope without updating the prompt (4.082ms)
+✔ saved plan with missing scope fails instead of defaulting to full (2.226625ms)
+✔ saved plan with unknown scope fails instead of defaulting to full (1.809625ms)
+✔ allows simulation endpoints and readbacks only (0.902041ms)
+✔ fourteen authorized requests, two setup failures, pending and unknown attempts stop submission (0.2635ms)
+✔ simulation selects the production reminder override and leaves ordinary prompts unchanged (3.844625ms)
+✔ test creation is explicitly a simulation with mocked tools and no seeded agent speech (0.300167ms)
+✔ scores complete control and preserves exact billed telemetry (3.431166ms)
+✔ wrong served model and host sequence remain explicit protocol failures (0.829584ms)
+✔ missing prices, credits, model and workspace identities fail loudly (1.043708ms)
+✔ host case and punctuation normalize but words do not (0.942708ms)
+✔ readback accepts provider defaults but rejects changed requested fields (0.11925ms)
+✔ billing survives model telemetry failure without leaking billing IDs or inventing zero (0.770042ms)
+✔ provider content failure and cancellation cannot count as successful arms (0.398459ms)
+✔ incomplete billing retains every valid field while failing completeness (0.417875ms)
+✔ an agent ending a valid host prefix early remains a task failure in the comparison (0.715291ms)
+✔ explicit branch success criteria are sent to the provider evaluator (0.066375ms)
+✔ submission progress preserves previous success and failure counts through the real runner (23.786166ms)
+✔ local preflight: valid (484.576125ms)
+✔ local preflight: invalid (329.858167ms)
+✔ local preflight: missing (404.202334ms)
+✔ local preflight: auth-failed (369.492458ms)
+✔ synthetic provider boundary refuses outbound dispatch to an unrelated host (10.496209ms)
+ℹ tests 44
+ℹ suites 0
+ℹ pass 44
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1699.235459
+
+> phone-calls-mcp@0.1.0 build
+> cf build
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - import "./test/data" without a file extension (vitest.config.ts:4:21). Add the file extension
+  - import "./test/runtime-provider" without a file extension (vitest.config.ts:5:33). Add the file extension
+  - import "./data" without a file extension (test/runtime-provider.ts:1:21). Add the file extension
+  - import "../src/config" without a file extension (test/data.ts:1:29). Add the file extension
+  - import "../src/contracts" without a file extension (test/data.ts:2:33). Add the file extension
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+├  Build
+│  Delegating to Vite
+vite v8.3.5 building ssr environment for production...
+transforming...
+✓ 265 modules transformed.
+rendering chunks...
+computing gzip size...
+.cloudflare/output/v0/workers/default/bundle/.vite/manifest.json      0.15 kB │ gzip:   0.11 kB
+.cloudflare/output/v0/workers/default/bundle/index.js             1,136.67 kB │ gzip: 262.58 kB │ map: 2,095.79 kB
+
+✓ built in 59ms
+◆  Build complete

@@ -1,0 +1,32 @@
+✔ agent update diffs prompt precisely and preserves provider defaults (2.146583ms)
+✔ agent fingerprint normalizes only the known null analysis field (7.7815ms)
+✔ reviewed update PATCHes only changed prompt and reads back exact identity (16.627459ms)
+✔ agent update refuses no-review before PATCH (2.362875ms)
+✔ agent update refuses review-hash before PATCH (2.301834ms)
+✔ agent update refuses agent-drift before PATCH (2.243333ms)
+✔ agent update refuses account-drift before PATCH (2.072292ms)
+✔ agent update refuses selected-config-drift before PATCH (1.885459ms)
+✔ uncertain PATCH cannot repeat, and read-only readback reconciles it (4.809583ms)
+✔ lost webhook is a failed readback and cannot be reconciled as success (4.154ms)
+✔ wrong agent identity fails plan with zero PATCH calls (1.130667ms)
+✔ preservation rejects workflow changes outside the desired definition (0.231292ms)
+✔ CLI accepts permission-only solely as an explicit plan flag (0.134083ms)
+✔ default plan explicitly binds the full update scope (1.3515ms)
+✔ permission-only plan applies one permission and readback does not claim the prompt changed (3.853291ms)
+✔ apply and readback refuse caller-supplied scopes before provider requests (0.491167ms)
+✔ a changed scope cannot reuse a plan hash (1.658667ms)
+✔ a rehashed full plan cannot reuse permission-only review (1.92ms)
+✔ permission-only update retains the agent-drift guard (2.183375ms)
+✔ permission-only update retains the account-drift guard (1.770042ms)
+✔ permission-only update retains the unmanaged-permission guard (2.449583ms)
+✔ uncertain permission-only PATCH reconciles by saved scope without updating the prompt (4.46625ms)
+✔ saved plan with missing scope fails instead of defaulting to full (2.077375ms)
+✔ saved plan with unknown scope fails instead of defaulting to full (1.652291ms)
+ℹ tests 24
+ℹ suites 0
+ℹ pass 24
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 214.927792

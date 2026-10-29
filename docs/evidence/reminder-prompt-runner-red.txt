@@ -1,0 +1,57 @@
+✔ allows simulation endpoints and readbacks only (1.928333ms)
+✖ fourteen authorized requests, two setup failures, pending and unknown attempts stop submission (0.462167ms)
+✖ simulation selects the production reminder override and leaves ordinary prompts unchanged (0.149125ms)
+✔ test creation is explicitly a simulation with mocked tools and no seeded agent speech (0.300875ms)
+✔ scores complete control and preserves exact billed telemetry (4.246292ms)
+✔ wrong served model and host sequence remain explicit protocol failures (0.962542ms)
+✔ missing prices, credits, model and workspace identities fail loudly (0.9625ms)
+✔ host case and punctuation normalize but words do not (0.398125ms)
+✔ readback accepts provider defaults but rejects changed requested fields (0.08475ms)
+✔ billing survives model telemetry failure without leaking billing IDs or inventing zero (0.5785ms)
+✔ provider content failure and cancellation cannot count as successful arms (0.3395ms)
+✔ incomplete billing retains every valid field while failing completeness (0.239125ms)
+✔ an agent ending a valid host prefix early remains a task failure in the comparison (0.242584ms)
+✔ explicit branch success criteria are sent to the provider evaluator (0.038125ms)
+✔ submission progress preserves previous success and failure counts through the real runner (31.977375ms)
+ℹ tests 15
+ℹ suites 0
+ℹ pass 13
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 234.959416
+
+✖ failing tests:
+
+test at test/conversation-simulate.test.mjs:23:1
+✖ fourteen authorized requests, two setup failures, pending and unknown attempts stop submission (0.462167ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+  12 !== 14
+
+      at TestContext.<anonymous> (file:///Users/tonygwu/Code/phone-calls/repo-1/test/conversation-simulate.test.mjs:24:9)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 12,
+    expected: 14,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }
+
+test at test/conversation-simulate.test.mjs:31:1
+✖ simulation selects the production reminder override and leaves ordinary prompts unchanged (0.149125ms)
+  TypeError [Error]: simulation.buildSimulationDefinition is not a function
+      at TestContext.<anonymous> (file:///Users/tonygwu/Code/phone-calls/repo-1/test/conversation-simulate.test.mjs:33:28)
+      at Test.runInAsyncScope (node:async_hooks:227:14)
+      at Test.run (node:internal/test_runner/test:1402:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:974:18)
+      at Test.postRun (node:internal/test_runner/test:1542:19)
+      at Test.run (node:internal/test_runner/test:1467:12)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)

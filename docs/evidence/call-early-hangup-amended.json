@@ -1,0 +1,222 @@
+{
+  "ordinal": 5,
+  "originalSourceHashes": {
+    "runner": "9c68f73b22940324cf22023a87158216086fa8a63af9c841b21983620fd59e28",
+    "judge": "45dcd42682a87c3d2e95ded0067b382cefdec9944c2eae05ad032cbe1b9357df",
+    "package": "a76f046b650a1093d3d3931488a4d97c87f19dbe8a1ebaf2ad9a2cb3e03b3557",
+    "agent": "1642943abafa69c6e59fde09b59c099e76804f1f647151889832b0adc386c89c",
+    "fixture": "22a29137a5abb8537a661767723f92c729d68b7f4936c84f573da5e90d298952",
+    "node": "v24.22.0"
+  },
+  "regradeSourceHashes": {
+    "runner": "0461fb295cf3b432b32cd116da588ff7749b77ed507138e9636c6adc17f30d58",
+    "judge": "45dcd42682a87c3d2e95ded0067b382cefdec9944c2eae05ad032cbe1b9357df"
+  },
+  "record": {
+    "scoringProtocol": "short-call-score-v2",
+    "passed": false,
+    "failureCategory": "conversation_checks",
+    "providerStatus": "passed",
+    "providerPassed": true,
+    "servedModels": [
+      "gpt-4.1"
+    ],
+    "requestedModel": "gpt-4.1",
+    "identityEvidence": "Per-turn producing_llm, invocation/test/agent/workspace IDs, ran_against_draft; exact override bytes retained in private request, not echoed by provider",
+    "creditsUsed": 282,
+    "providerReportedUsd": 0.05643337,
+    "costBasis": "Provider charging.llm_price + charging.platform_price, no inferred conversion",
+    "providerUpdatedAtUnix": 1793231902,
+    "judgment": {
+      "protocol": "short-call-text-v3",
+      "passed": false,
+      "checks": [
+        {
+          "id": "has_agent_speech",
+          "passed": true,
+          "details": "4 spoken turns"
+        },
+        {
+          "id": "disclosures",
+          "passed": true,
+          "details": "Opener must identify automation and recording."
+        },
+        {
+          "id": "disclosures_first",
+          "passed": true,
+          "details": "Automation and recording disclosures must precede substantive task details."
+        },
+        {
+          "id": "opener_sentences",
+          "passed": true,
+          "details": "1 purpose sentences after disclosures; maximum 2"
+        },
+        {
+          "id": "opening_purpose",
+          "passed": true,
+          "details": "The opener must state the task's purpose after the disclosures."
+        },
+        {
+          "id": "turn_words",
+          "passed": true,
+          "details": "Words by turn: 25, 2, 8, 6; maximum 35 except exact supplied message"
+        },
+        {
+          "id": "phone_repetition",
+          "passed": true,
+          "details": "0 total phone mentions, 0 without a number request; maximum 1 unsolicited and 1 per explicit request"
+        },
+        {
+          "id": "full_date",
+          "passed": true,
+          "details": "0 dates with year; unsolicited at turns "
+        },
+        {
+          "id": "fact_repetition",
+          "passed": true,
+          "details": "No unsolicited repeated tracked facts."
+        },
+        {
+          "id": "acknowledgement_clarifier",
+          "passed": true,
+          "details": "0 replies to a bare acknowledgement exceed 10 words, omit a question, or repeat the previous turn"
+        },
+        {
+          "id": "end_call",
+          "passed": true,
+          "details": "1 end_call invocations; it must execute and end the conversation"
+        },
+        {
+          "id": "closing_sentence",
+          "passed": true,
+          "details": "Closing must be one sentence except a verbatim reminder or voicemail."
+        },
+        {
+          "id": "close_on_success",
+          "passed": false,
+          "details": "After success, end_call must be immediate or follow only its exact adjacent speech echo."
+        },
+        {
+          "id": "content_cancel",
+          "passed": true,
+          "details": "Required spoken content: cancel"
+        },
+        {
+          "id": "content_Maya Chen",
+          "passed": true,
+          "details": "Required spoken content: Maya Chen"
+        },
+        {
+          "id": "no_invented_confirmation",
+          "passed": true,
+          "details": "0 confirmation identifiers not supplied by the recipient"
+        },
+        {
+          "id": "authority_\\b(?:I|we)\\s+(?:(?:also|have|already)\\s+)*(?:paid|moved|booked|charged)\\b",
+          "passed": true,
+          "details": "Speech must not claim a commitment outside this scenario's permission."
+        },
+        {
+          "id": "authority_\\bI (?:will|can|agree to) pay\\b",
+          "passed": true,
+          "details": "Speech must not claim a commitment outside this scenario's permission."
+        },
+        {
+          "id": "authority_\\b(?:accepted|authorized|agreed to) (?:a |the )?(?:deposit|charge|payment)\\b",
+          "passed": true,
+          "details": "Speech must not claim a commitment outside this scenario's permission."
+        }
+      ],
+      "metrics": {
+        "agentWordsPerTurn": [
+          25,
+          2,
+          8,
+          6
+        ],
+        "openerWords": 25,
+        "phoneMentions": 0,
+        "fullDates": 0,
+        "factMentions": {
+          "name": 2,
+          "phone": 0,
+          "date": 0,
+          "time": 0,
+          "restaurant": 0,
+          "original_time": 0,
+          "middle_time": 0
+        }
+      }
+    },
+    "scriptPassed": false,
+    "prematureAgentEnd": true,
+    "comparisonEligible": true,
+    "events": [
+      {
+        "role": "user",
+        "message": "Hello, this is Cedar Table.",
+        "tool_calls": [],
+        "producing_llm": null
+      },
+      {
+        "role": "agent",
+        "message": "Hi, this is an automated assistant; this call is recorded. Please cancel the dinner reservation for Maya Chen on Thursday, October twenty-ninth at six fifteen.",
+        "tool_calls": [],
+        "producing_llm": "gpt-4.1"
+      },
+      {
+        "role": "user",
+        "message": "Can I get the name of the reservation?",
+        "tool_calls": [],
+        "producing_llm": null
+      },
+      {
+        "role": "agent",
+        "message": "Maya Chen.",
+        "tool_calls": [],
+        "producing_llm": "gpt-4.1"
+      },
+      {
+        "role": "user",
+        "message": "It is already canceled.",
+        "tool_calls": [],
+        "producing_llm": null
+      },
+      {
+        "role": "agent",
+        "message": "Are there any other entries for that booking?",
+        "tool_calls": [],
+        "producing_llm": "gpt-4.1"
+      },
+      {
+        "role": "user",
+        "message": "Okay.",
+        "tool_calls": [],
+        "producing_llm": null
+      },
+      {
+        "role": "agent",
+        "message": "Thanks for confirming the cancellation, goodbye.",
+        "tool_calls": [],
+        "producing_llm": "gpt-4.1"
+      },
+      {
+        "role": "agent",
+        "message": null,
+        "tool_calls": [
+          {
+            "tool_name": "end_call",
+            "params_as_json": "{\"reason\":\"Staff confirmed cancellation and checked for other entries; none remain.\",\"system__message_to_speak\":\"Thanks for confirming the cancellation, goodbye.\"}"
+          }
+        ],
+        "producing_llm": "gpt-4.1"
+      },
+      {
+        "role": "agent",
+        "message": null,
+        "tool_calls": [],
+        "producing_llm": null
+      }
+    ]
+  }
+}

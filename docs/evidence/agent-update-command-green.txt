@@ -1,0 +1,18 @@
+
+> phone-calls-mcp@0.1.0 agent:plan
+> node --env-file-if-exists=.dev.vars --import tsx scripts/agent-update.ts plan
+
+{
+  mode: 'plan',
+  planSha256: '459d5cc1af2b9b7d531f260e7774e752edd1892330ba8482c6563297c62e4304',
+  changedPaths: [
+    'agent.conversation_config.agent.prompt.prompt',
+    'agent.conversation_config.agent.prompt.llm',
+    'agent.conversation_config.agent.prompt.reasoning_effort'
+  ],
+  attempted: 2,
+  succeeded: 2,
+  failed: 0,
+  calls_placed: 0,
+  mutations: 0
+}
