@@ -1,0 +1,28 @@
+{
+  "id": "verbatim-reminder",
+  "hostScript": [
+    "Hello?"
+  ],
+  "dynamicVariables": {
+    "call_id": "synthetic-cancellation",
+    "owner_name": "Maya Chen",
+    "callback_number": "+12025550148",
+    "task_type": "reminder",
+    "objective": "Deliver the complete supplied reminder once to the person who answers, then end the call.",
+    "context": "The owner is Maya Chen. The complete reminder is in voicemail_message.",
+    "rules": "[\"Preserve every word of the supplied reminder exactly once.\"]",
+    "success_criteria": "[\"The complete supplied message is delivered once, then the call ends.\"]",
+    "permitted_commitments": "[]",
+    "acceptable_alternatives": "[]",
+    "information_may_disclose": "[\"Maya Chen, the supplied reminder, automation and recording.\"]",
+    "voicemail_action": "leave_message",
+    "voicemail_message": "Remember to take out the recycling tomorrow morning. The cardboard boxes have formed a committee, and they are demanding a change of scenery. Please put the blue bin at the curb before breakfast, keep the walkway clear, and bring the empty bin back after collection. This is the complete reminder, including every sentence, and it should be delivered once."
+  },
+  "judge": {
+    "taskType": "reminder",
+    "phone": "202-555-0148",
+    "name": "Maya Chen",
+    "facts": [],
+    "voicemailMessage": "Remember to take out the recycling tomorrow morning. The cardboard boxes have formed a committee, and they are demanding a change of scenery. Please put the blue bin at the curb before breakfast, keep the walkway clear, and bring the empty bin back after collection. This is the complete reminder, including every sentence, and it should be delivered once."
+  }
+}

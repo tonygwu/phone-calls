@@ -1,0 +1,68 @@
+[
+  {
+    "role": "user",
+    "message": "Hello, this is Cedar Table.",
+    "tool_calls": []
+  },
+  {
+    "role": "agent",
+    "message": "Hi, this is an automated assistant; this call is recorded. Please cancel tomorrow\u2019s six fifteen dinner reservation under Maya Chen.",
+    "tool_calls": []
+  },
+  {
+    "role": "user",
+    "message": "Can I get the name of the reservation?",
+    "tool_calls": []
+  },
+  {
+    "role": "agent",
+    "message": "Maya Chen.",
+    "tool_calls": []
+  },
+  {
+    "role": "user",
+    "message": "It is already canceled.",
+    "tool_calls": []
+  },
+  {
+    "role": "agent",
+    "message": "Any other entries for that booking?",
+    "tool_calls": []
+  },
+  {
+    "role": "user",
+    "message": "Okay.",
+    "tool_calls": []
+  },
+  {
+    "role": "agent",
+    "message": "Do any remain?",
+    "tool_calls": []
+  },
+  {
+    "role": "user",
+    "message": "No, I do not have any other reservation.",
+    "tool_calls": []
+  },
+  {
+    "role": "agent",
+    "message": "Thanks for confirming the cancellation and that no other entries remain, goodbye.",
+    "tool_calls": []
+  },
+  {
+    "role": "agent",
+    "message": null,
+    "tool_calls": [
+      {
+        "tool_name": "end_call",
+        "params_as_json": "{\"reason\":\"Staff confirmed the reservation is already canceled and no other matching reservation remains.\",\"system__message_to_speak\":\"Thanks for confirming the cancellation and that no other entries remain, goodbye.\"}",
+        "tool_has_been_called": true
+      }
+    ]
+  },
+  {
+    "role": "agent",
+    "message": null,
+    "tool_calls": []
+  }
+]

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import baseline from "./fixtures/verbose-cancellation.json";
 import accepted from "./fixtures/short-cancellation-accepted.json";
+import finalAccepted from "./fixtures/short-cancellation-final.json";
 import scenarios from "../evals/scenarios.json";
 import { judgeConversation, type JudgeScenario } from "./conversation-judge";
 
@@ -37,6 +38,11 @@ describe("literal conversation checks", () => {
     const result = judgeConversation(accepted, scenario);
     expect(result.checks.filter(c => !c.passed)).toEqual([]);
     expect(result.metrics.agentWordsPerTurn).toEqual([25, 2, 8, 3, 6]);
+  });
+  it("accepts the final measured model waiting for explicit completion", () => {
+    const result = judgeConversation(finalAccepted, scenario);
+    expect(result.checks.filter(c => !c.passed)).toEqual([]);
+    expect(result.metrics.agentWordsPerTurn).toEqual([20, 2, 6, 3, 12]);
   });
   it("rejects a plausible short conversation that never hangs up", () => {
     expect(judgeConversation(concise.slice(0, -1), scenario).checks.find(c => c.id === "end_call")?.passed).toBe(false);

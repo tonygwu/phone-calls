@@ -2,13 +2,14 @@ import { createHash, randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import { z } from "zod";
-import { agentDefinition } from "../src/agent";
-import { canonical } from "../src/contracts";
+import { agentDefinition, conversationOverride } from "../src/agent";
+import { canonical, startSchema } from "../src/contracts";
 import { judgeConversation, type JudgeScenario } from "../test/conversation-judge";
 
 // This runner cannot dial: all network requests pass an exact simulation/read-only allowlist.
 const API = "https://api.elevenlabs.io";
-export const MAX_RUNS = 12;
+// Owner explicitly extended the original 12 submissions by two reminder tests.
+export const MAX_RUNS = 14;
 export const PROTOCOL = "short-natural-calls-v1";
 const ROOT = "private/conversation-eval";
 const cleanId = z.string().regex(/^[a-zA-Z0-9_-]+$/);
@@ -18,8 +19,17 @@ const fileHash = (path: string) => createHash("sha256").update(readFileSync(path
 const load = (path: string) => JSON.parse(readFileSync(path, "utf8"));
 function save(path: string, value: unknown) { writeFileSync(path, JSON.stringify(value, null, 2) + "\n", { mode: 0o600 }); }
 const sourceHashes = (fixturePath: string) => ({ runner: fileHash("scripts/conversation-simulate.ts"), judge: fileHash("test/conversation-judge.ts"), package: fileHash("package-lock.json"), agent: fileHash("src/agent.ts"), fixture: fileHash(fixturePath), node: process.version });
-const fixtureSchema = z.object({ id: armId, hostScript: z.array(z.string().min(1)).min(1), dynamicVariables: z.record(z.string(), z.string()), judge: z.unknown() });
+const fixtureSchema = z.object({ id: armId, hostScript: z.array(z.string().min(1)).min(1), dynamicVariables: z.record(z.string(), z.string()), judge: z.unknown(), successConditions: z.array(z.string().min(1)).min(1).optional() });
 const definitionSchema = z.object({ conversation_config: z.object({ agent: z.object({ prompt: z.object({ prompt: z.string().min(1), llm: z.string().min(1), temperature: z.number(), tool_ids: z.array(z.string()).length(0), mcp_server_ids: z.array(z.string()).length(0), knowledge_base: z.array(z.unknown()).length(0), backup_llm_config: z.object({ preference: z.literal("disabled") }), built_in_tools: z.record(z.string(), z.unknown()) }).passthrough() }).passthrough() }).passthrough(), platform_settings: z.object({}).passthrough() }).passthrough();
+export function buildSimulationDefinition(fixture: z.infer<typeof fixtureSchema>, voiceId: string) {
+  const variables = z.object({ task_type: startSchema.shape.task_type, voicemail_action: z.enum(["leave_message", "hang_up"]), voicemail_message: z.string() }).parse(fixture.dynamicVariables);
+  const voicemail = startSchema.shape.voicemail.parse(variables.voicemail_action === "leave_message" ? { action: "leave_message", message: variables.voicemail_message } : { action: "hang_up" });
+  const definition = agentDefinition(voiceId);
+  const override = conversationOverride({ task_type: variables.task_type, voicemail }, definition.conversation_config.conversation.max_duration_seconds);
+  if (override.agent) definition.conversation_config.agent.prompt.prompt = override.agent.prompt.prompt;
+  definition.conversation_config.conversation.max_duration_seconds = override.conversation.max_duration_seconds;
+  return definition;
+}
 export function buildTest(fixture: z.infer<typeof fixtureSchema>) {
   return {
     name: `Short natural call: ${fixture.id}`,
@@ -30,7 +40,7 @@ export function buildTest(fixture: z.infer<typeof fixtureSchema>) {
     simulation_max_turns: 12,
     simulated_user_model: "claude-sonnet-4-6",
     evaluation_model: "gemini-2.5-flash",
-    success_conditions: ["The caller achieves the supplied objective without inventing a confirmation or exceeding permitted commitments, then uses end_call."],
+    success_conditions: fixture.successConditions ?? ["The caller achieves the supplied objective without inventing a confirmation or exceeding permitted commitments, then uses end_call."],
     tool_mock_config: { mocking_strategy: "all", fallback_strategy: "raise_error" },
   };
 }
@@ -54,7 +64,7 @@ const ledgerSchema = z.object({ protocol: z.literal(PROTOCOL), attempts: z.array
 function persist(state: Ledger) { save(`${ROOT}/ledger.json`, state); }
 export function assertCanStart(state: Ledger) {
   if (state.protocol !== PROTOCOL) throw new Error("Protocol mismatch");
-  if (state.attempts.length >= MAX_RUNS) throw new Error("The 12-run batch cap is exhausted");
+  if (state.attempts.length >= MAX_RUNS) throw new Error(`The ${MAX_RUNS}-run batch cap is exhausted`);
   if (state.setupFailures >= 2) throw new Error("Two setup failures: stop and report before another request");
   if (state.attempts.some(a => ["intent", "unknown", "pending"].includes(a.status))) throw new Error("An existing attempt needs reconciliation or collection; never submit another run to poll");
   if (Object.values(state.tests).some(t => t.status === "intent")) throw new Error("A test creation needs reconciliation; do not repeat it");
@@ -86,11 +96,13 @@ export function scoreInvocation(raw: unknown, expected: { agentId: string; testI
   // Freeze case and punctuation normalization before either arm. Words and their order must match.
   const normalizeHost = (line:string) => line.normalize("NFKC").toLowerCase().replace(/[^\p{L}\p{N}]+/gu," ").trim();
   const scriptPassed = canonical(hostLines.map(normalizeHost)) === canonical(expected.hostScript.map(normalizeHost));
+  const hostPrefixMatches = hostLines.length < expected.hostScript.length && hostLines.every((line, i) => normalizeHost(line) === normalizeHost(expected.hostScript[i]));
+  const prematureAgentEnd = hostPrefixMatches && generated.some(t => t.tool_calls?.some(call => z.object({ tool_name: z.string() }).passthrough().parse(call).tool_name === "end_call"));
   const modelPassed = servedModels.length === 1 && servedModels[0] === expected.requestedModel;
   const judgment = judgeConversation(run.agent_responses, expected.judge);
   const providerPassed = run.status === "passed";
   const passed = scriptPassed && modelPassed && judgment.passed && providerPassed;
-  return { passed, failureCategory: !scriptPassed ? "simulator_host_script" : !modelPassed ? "served_model_mismatch" : run.status === "cancelled" ? "simulation_cancelled" : !providerPassed ? "provider_content_evaluation" : !judgment.passed ? "conversation_checks" : null, providerStatus: run.status, providerPassed, servedModels, requestedModel: expected.requestedModel, identityEvidence: "Per-turn producing_llm, invocation/test/agent/workspace IDs, ran_against_draft; exact override bytes retained in private request, not echoed by provider", creditsUsed: run.credits_used, providerReportedUsd: run.charging.llm_price + run.charging.platform_price, costBasis: "Provider charging.llm_price + charging.platform_price, no inferred conversion", providerUpdatedAtUnix: run.last_updated_at_unix, judgment, scriptPassed, comparisonEligible: scriptPassed && modelPassed && run.status !== "cancelled", events: run.agent_responses.map(t => ({ role: t.role, message: t.message, tool_calls: t.tool_calls?.map(call => { const c = z.object({ tool_name: z.string(), params_as_json: z.string() }).parse(call); return { tool_name: c.tool_name, params_as_json: c.params_as_json }; }), producing_llm: t.producing_llm })) };
+  return { scoringProtocol: "short-call-score-v2", passed, failureCategory: !scriptPassed && !prematureAgentEnd ? "simulator_host_script" : !modelPassed ? "served_model_mismatch" : run.status === "cancelled" ? "simulation_cancelled" : !providerPassed ? "provider_content_evaluation" : prematureAgentEnd || !judgment.passed ? "conversation_checks" : null, providerStatus: run.status, providerPassed, servedModels, requestedModel: expected.requestedModel, identityEvidence: "Per-turn producing_llm, invocation/test/agent/workspace IDs, ran_against_draft; exact override bytes retained in private request, not echoed by provider", creditsUsed: run.credits_used, providerReportedUsd: run.charging.llm_price + run.charging.platform_price, costBasis: "Provider charging.llm_price + charging.platform_price, no inferred conversion", providerUpdatedAtUnix: run.last_updated_at_unix, judgment, scriptPassed, prematureAgentEnd, comparisonEligible: (scriptPassed || prematureAgentEnd) && modelPassed && run.status !== "cancelled", events: run.agent_responses.map(t => ({ role: t.role, message: t.message, tool_calls: t.tool_calls?.map(call => { const c = z.object({ tool_name: z.string(), params_as_json: z.string() }).parse(call); return { tool_name: c.tool_name, params_as_json: c.params_as_json }; }), producing_llm: t.producing_llm })) };
 }
 export function billingTelemetry(raw: unknown) {
   const run = z.object({ test_runs: z.array(z.record(z.string(), z.unknown())).length(1) }).safeParse(raw);
@@ -131,14 +143,14 @@ export async function main(args = process.argv.slice(2)) {
       if (!fixturePath) throw new Error("A fixture path is required");
       const config = z.object({ elevenAgentId: cleanId, voiceId: z.string().min(1) }).parse(load("private/service-config.json"));
       const fixture = fixtureSchema.parse(load(fixturePath));
-      const definition = definitionSchema.parse(agentDefinition(config.voiceId));
+      const definition = definitionSchema.parse(buildSimulationDefinition(fixture, config.voiceId));
       const identityTag = randomUUID();
       const account = z.object({user_id:z.string().min(1),workspace_id:z.string().min(1)}).parse(await request(`${API}/v1/user`, "GET", `${ROOT}/${arm}-plan-account-${identityTag}.raw.json`));
       const live = await request(`${API}/v1/convai/agents/${config.elevenAgentId}`, "GET", `${ROOT}/${arm}-plan-agent-${identityTag}.raw.json`);
       if (live.agent_id !== config.elevenAgentId) throw new Error("Plan agent identity mismatch");
       const liveConfiguration = {conversation_config:live.conversation_config,platform_settings:live.platform_settings};
       if (arm === "before" && (live.conversation_config?.agent?.prompt?.prompt !== definition.conversation_config.agent.prompt.prompt || live.conversation_config?.agent?.prompt?.llm !== definition.conversation_config.agent.prompt.llm || live.conversation_config?.agent?.prompt?.temperature !== definition.conversation_config.agent.prompt.temperature)) throw new Error("Before-arm prompt, model or temperature differs from the live agent");
-      const plan = { protocol: PROTOCOL, arm, account, agentId: config.elevenAgentId, liveConfigurationSha256:hash(liveConfiguration), fixturePath, fixture, test: buildTest(fixture), override: { conversation_config: definition.conversation_config, platform_settings: definition.platform_settings }, sourceHashes: sourceHashes(fixturePath), maxRuns: MAX_RUNS, timeoutMs: 60000, implicitRetries: 0, simulationEndpoint: simulationEndpoint(config.elevenAgentId), mutations: ["Create one fictional simulation-only test if this exact fixture has not been created", "Submit exactly one run-tests invocation with a full agent configuration override; never dial or update an agent"] };
+      const plan = { protocol: PROTOCOL, executionProtocol: "short-natural-dispatch-v2", arm, account, agentId: config.elevenAgentId, liveConfigurationSha256:hash(liveConfiguration), fixturePath, fixture, test: buildTest(fixture), override: { conversation_config: definition.conversation_config, platform_settings: definition.platform_settings }, sourceHashes: sourceHashes(fixturePath), maxRuns: MAX_RUNS, timeoutMs: 60000, implicitRetries: 0, simulationEndpoint: simulationEndpoint(config.elevenAgentId), mutations: ["Create one fictional simulation-only test if this exact fixture has not been created", "Submit exactly one run-tests invocation with a full agent configuration override; never dial or update an agent"] };
       const planSha256 = hash(plan);
       save(`${ROOT}/${arm}-plan.json`, { planSha256, plan });
       console.log(JSON.stringify({ planSha256, planPath: `${ROOT}/${arm}-plan.json`, mutationRequests: 0, realPhoneCalls: 0 }));
@@ -174,7 +186,8 @@ export async function main(args = process.argv.slice(2)) {
         const accepted = z.object({ id: cleanId, test_runs: z.array(z.object({ agent_id: cleanId, test_id: cleanId, test_invocation_id: cleanId })).length(1) }).passthrough().parse(await request(plan.simulationEndpoint, "POST", `${ROOT}/run-${attempt.ordinal}-start.raw.json`, requestBody));
         if (accepted.test_runs[0].agent_id !== plan.agentId || accepted.test_runs[0].test_id !== test.id || accepted.test_runs[0].test_invocation_id !== accepted.id) throw new Error("Started simulation identity mismatch");
         attempt.invocationId = accepted.id; attempt.status = "pending"; mutation.status="succeeded";persist(state);
-        console.log(JSON.stringify({ attempted: state.attempts.length, succeeded: 0, failed: 0, pending: 1, ordinal: attempt.ordinal, next: `collect ${attempt.ordinal}`, realPhoneCalls: 0 }));
+        const progress = summary(state);
+        console.log(JSON.stringify({ attempted: progress.attempted, succeeded: progress.succeeded, failed: progress.failed, pendingOrUnknown: progress.pendingOrUnknown, failureTaxonomy: progress.failureTaxonomy, ordinal: attempt.ordinal, next: `collect ${attempt.ordinal}`, realPhoneCalls: 0 }));
       } catch (error) {
         const knownRejected = error instanceof ProviderError && [401, 403, 422].includes(error.status!);
         attempt.status = knownRejected ? "failed" : "unknown"; attempt.failureCategory = error instanceof ProviderError ? error.category : "provider_identity_or_response_shape";
