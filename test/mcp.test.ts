@@ -30,4 +30,7 @@ it("exposes four tools and routes independent start requests through the real HT
   const withRules = { ...input, rules: ["Answer only the question asked."] };
   await rpc("tools/call", { name: "phone_calls_start_call", arguments: withRules });
   expect(invoke).toHaveBeenCalledWith("start", withRules);
+  const withOwner = { ...withRules, task_type: "support", recipient: "+12125550123", owner_join: "when_live_agent" };
+  await rpc("tools/call", { name: "phone_calls_start_call", arguments: withOwner });
+  expect(invoke).toHaveBeenCalledWith("start", withOwner);
 });

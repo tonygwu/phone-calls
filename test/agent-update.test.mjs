@@ -85,6 +85,37 @@ test("reviewed update PATCHes only changed prompt and reads back exact identity"
   } finally { h.close(); }
 });
 
+test("full agent updates preserve the installed owner connection tool", async () => {
+  const h = harness(); try {
+    const installed = ["synthetic_owner_connection_tool", "synthetic_existing_tool"];
+    h.state.agent.conversation_config.agent.prompt.tool_ids = installed;
+    await runAgentUpdate("plan", h.options);
+    assert.ok(!h.read("plan.json").plan.changedPaths.includes("agent.conversation_config.agent.prompt.tool_ids"));
+    h.review();
+    await runAgentUpdate("apply", h.options);
+    assert.deepEqual(h.state.agent.conversation_config.agent.prompt.tool_ids, installed);
+    await runAgentUpdate("readback", h.options);
+    assert.equal(h.state.calls.filter(c => c.method === "PATCH").length, 1);
+  } finally { h.close(); }
+});
+
+test("an update that drops the owner connection tool cannot pass or reconcile", async () => {
+  const h = harness(); try {
+    h.state.agent.conversation_config.agent.prompt.tool_ids = ["synthetic_owner_connection_tool"];
+    const fetcher = h.options.fetcher;
+    h.options.fetcher = async (url, init) => {
+      const response = await fetcher(url, init);
+      if (init.method === "PATCH") h.state.agent.conversation_config.agent.prompt.tool_ids = [];
+      return response;
+    };
+    await runAgentUpdate("plan", h.options); h.review();
+    await assert.rejects(runAgentUpdate("apply", h.options), /Unmanaged agent settings changed/);
+    await assert.rejects(runAgentUpdate("readback", h.options), /Unmanaged agent settings changed/);
+    assert.equal(h.read("journal.json").state, "intent");
+    assert.equal(h.state.calls.filter(c => c.method === "PATCH").length, 1);
+  } finally { h.close(); }
+});
+
 for (const fault of ["no-review", "review-hash", "agent-drift", "account-drift", "selected-config-drift"]) {
   test(`agent update refuses ${fault} before PATCH`, async () => {
     const h = harness(); try {
@@ -213,17 +244,13 @@ test("a changed scope cannot reuse a plan hash", async () => {
   } finally { h.close(); }
 });
 
-test("a rehashed full plan cannot reuse permission-only review", async () => {
+test("a full plan cannot reuse permission-only review", async () => {
   const h = harness(); try {
     disablePromptPermission(h);
     await runAgentUpdate("plan", { ...h.options, scope: "permission-only" }); h.review();
-    const prepared = h.read("plan.json"); const desired = agentDefinition(cfg.voiceId);
-    prepared.plan.scope = "full";
-    prepared.plan.desiredSha256 = await digest(canonical(desired));
-    prepared.plan.patch = desiredPatch(h.state.agent, desired);
-    prepared.plan.changedPaths = configurationDiff(h.state.agent, desired);
-    prepared.hash = await digest(canonical(prepared.plan));
-    writeFileSync(join(h.root, "private/agent-update/plan.json"), JSON.stringify(prepared));
+    // Produce a valid broader plan through the public command while keeping
+    // the earlier permission-only approval. The exact review must not carry.
+    await runAgentUpdate("plan", h.options);
     await assert.rejects(runAgentUpdate("apply", h.options), /fresh ship review/);
     assert.equal(h.state.calls.filter(c => c.method === "PATCH").length, 0);
   } finally { h.close(); }

@@ -1,4 +1,4 @@
-import { terminal, type Task } from "./contracts";
+import { activeTask, type Task } from "./contracts";
 
 export interface Store {
   get(id: string): Task | undefined;
@@ -37,7 +37,7 @@ export class SqlStore implements Store {
     return row ? JSON.parse(row.body) as Task : undefined;
   }
   put(t: Task) {
-    const active = terminal.has(t.telephone) ? 0 : 1;
+    const active = activeTask(t) ? 1 : 0;
     this.sql.exec("INSERT INTO calls VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET expires=excluded.expires, active=excluded.active, next_check=excluded.next_check, body=excluded.body", t.id, t.created, t.expires, active, t.nextCheck, JSON.stringify(t));
   }
   due(now: number) {

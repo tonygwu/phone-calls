@@ -34,6 +34,11 @@ Authentication or a checkout role alone grants none of these.
 
 Use `npm run simulate -- plan|run|collect|summary` for reviewed conversation simulations. See `docs/EVALUATION.md`; this tool cannot place telephone calls.
 
+Use `npm run conference:setup -- prepare|apply` for reviewed owner-conference
+configuration. Preparation reads provider state; apply creates a TwiML App and
+owner connection tool and updates the saved agent. It requires explicit resource
+change authorization and an exact reviewed plan. It never places calls or deploys.
+
 Use `skills/phone-call-brief/SKILL.md` to prepare concise call payloads with factual context and silent rules; installation and ChatGPT use are in `docs/CLIENTS.md`.
 
 Use `npm run agent:plan`, `agent:apply` and `agent:readback` to review, update and verify the existing ElevenLabs agent; these commands never dial.

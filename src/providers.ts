@@ -6,7 +6,7 @@ import { dispatchBody } from "./agent";
 const sid = z.string().regex(/^CA[0-9a-fA-F]{32}$/);
 export const dispatchResponse = z.object({ success: z.boolean(), message: z.string(), conversation_id: z.string().nullable(), callSid: sid.nullable() });
 const phoneStatus = z.enum(["queued", "ringing", "in-progress", "completed", "busy", "no-answer", "canceled", "failed"]);
-const twilioCallSchema = z.object({ sid, account_sid: z.string(), from: z.string(), to: z.string(), status: phoneStatus, price: z.string().nullable(), price_unit: z.string().nullable(), start_time: z.string().nullable(), duration: z.string().nullable() });
+export const twilioCallSchema = z.object({ sid, account_sid: z.string(), from: z.string(), to: z.string(), status: phoneStatus, price: z.string().nullable(), price_unit: z.string().nullable(), start_time: z.string().nullable(), duration: z.string().nullable() });
 const turnSchema = z.object({ role: z.enum(["user", "agent"]), message: z.string().nullish(), time_in_call_secs: z.number().nonnegative(), tool_calls: z.array(z.unknown()).nullish(), tool_results: z.array(z.unknown()).nullish() });
 export const conversationSchema = z.object({
   agent_id: z.string(), conversation_id: z.string(), user_id: z.string().nullish(),
@@ -34,16 +34,16 @@ const numeric = (value: string, label: string) => {
 function assert(check: unknown, code: string, message: string): asserts check {
   if (!check) throw new CallError(code, message, false, 503);
 }
-class ProviderHttpError extends CallError {
+export class ProviderHttpError extends CallError {
   constructor(readonly httpStatus: number) {
     super((httpStatus >= 300 && httpStatus < 400) || httpStatus >= 500 ? "PROVIDER_UNCERTAIN" : "PROVIDER_REJECTED", `Provider returned HTTP ${httpStatus}.`, false, 502);
   }
 }
 export class LiveProviders implements Providers {
-  constructor(private env: Env, private c: Config, private fetcher: typeof fetch = fetch) {}
-  private async request<S extends z.ZodType>(url: string, init: RequestInit, schema: S): Promise<z.output<S>>;
-  private async request(url: string, init: RequestInit): Promise<Response>;
-  private async request(url: string, init: RequestInit, schema?: z.ZodType): Promise<unknown> {
+  constructor(protected env: Env, protected c: Config, private fetcher: typeof fetch = fetch) {}
+  protected async request<S extends z.ZodType>(url: string, init: RequestInit, schema: S): Promise<z.output<S>>;
+  protected async request(url: string, init: RequestInit): Promise<Response>;
+  protected async request(url: string, init: RequestInit, schema?: z.ZodType): Promise<unknown> {
     let res: Response;
     // Native Workers fetch must not receive this LiveProviders instance as its receiver.
     const fetcher = this.fetcher;
@@ -56,10 +56,10 @@ export class LiveProviders implements Providers {
     try { return schema.parse(await res.json()); }
     catch { throw new CallError("PROVIDER_SCHEMA", "Provider response did not match the required schema. Inspect provider state before retrying.", false, 502); }
   }
-  private eleven<S extends z.ZodType>(path: string, schema: S, body?: unknown) {
+  protected eleven<S extends z.ZodType>(path: string, schema: S, body?: unknown) {
     return this.request(`https://api.elevenlabs.io${path}`, { method: body === undefined ? "GET" : "POST", headers: { "xi-api-key": secret(this.env, "ELEVENLABS_API_KEY"), "Content-Type": "application/json" }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) }, schema);
   }
-  private twilio<S extends z.ZodType>(path: string, schema: S, body?: URLSearchParams) {
+  protected twilio<S extends z.ZodType>(path: string, schema: S, body?: URLSearchParams) {
     return this.request(`https://api.twilio.com${path}`, { method: body ? "POST" : "GET", headers: { Authorization: `Basic ${btoa(`${this.c.twilioAccountSid}:${secret(this.env, "TWILIO_AUTH_TOKEN")}`)}`, ...(body ? { "Content-Type": "application/x-www-form-urlencoded" } : {}) }, ...(body ? { body: body.toString() } : {}) }, schema);
   }
   async dispatch(task: Task) {
@@ -108,13 +108,13 @@ export function correlate(task: Task, c: Conversation, config: Config) {
   const phone = c.metadata.phone_call;
   if (phone && (phone.agent_number !== config.fromNumber || phone.external_number !== task.to || phone.phone_number_id !== config.elevenPhoneId || (task.callSid && phone.call_sid !== task.callSid))) throw new CallError("IDENTITY_MISMATCH", "Conversation telephone metadata does not match this task.", false, 502);
 }
-export function applyConversation(task: Task, c: Conversation, observation: number) {
+export function applyConversation(task: Task, c: Conversation, observation: number, recordCallIdentity = true) {
   if (task.elevenObservation !== undefined && observation <= task.elevenObservation) return;
   if ((task.elevenStatus === "done" || task.elevenStatus === "failed") && c.status !== "done" && c.status !== "failed") return;
   task.elevenObservation = observation;
   task.elevenStatus = c.status;
   task.conversationId = c.conversation_id;
-  if (c.metadata.phone_call) task.callSid = c.metadata.phone_call.call_sid;
+  if (recordCallIdentity && c.metadata.phone_call) task.callSid = c.metadata.phone_call.call_sid;
   task.providerStart = c.metadata.start_time_unix_secs * 1000;
   task.providerDuration = c.metadata.call_duration_secs;
   if (task.deadline) task.deadline = Math.min(task.deadline, task.providerStart + 60_000 + task.duration * 1000);

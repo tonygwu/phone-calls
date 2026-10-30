@@ -1,0 +1,16 @@
+{
+  "task_type": "support",
+  "recipient": "+12125550123",
+  "owner_join": "when_live_agent",
+  "objective": "Reach a live representative about the duplicate charge, explain the issue, and add me while staying on the call to help.",
+  "context": "Order EXAMPLE-123 has the same $29.99 charge twice on the receipt.",
+  "rules": ["Use only the supplied facts and answer only the question asked.", "Let the owner authenticate directly after joining."],
+  "success_criteria": ["A live representative understands the duplicate charge", "The owner joins to handle authentication and any required consent", "Record the actual resolution or remaining follow-up"],
+  "constraints": {
+    "permitted_commitments": [],
+    "acceptable_alternatives": [],
+    "information_may_disclose": ["The order reference, receipt amount and duplicate-charge issue"]
+  },
+  "voicemail": { "action": "hang_up" },
+  "max_duration_seconds": 3600
+}

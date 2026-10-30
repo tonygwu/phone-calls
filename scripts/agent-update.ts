@@ -82,7 +82,13 @@ function desiredConfiguration(scope: Scope, voiceId: string) {
   if (scope === "permission-only") {
     return { platform_settings: { overrides: { conversation_config_override: { agent: { prompt: { prompt: true } } } } } };
   }
-  return agentDefinition(voiceId);
+  const definition = agentDefinition(voiceId);
+  // Resource setup owns webhook tool IDs. Maintenance must preserve installed
+  // tools, including connect_owner, even if this checkout predates their setup.
+  const { tool_ids: _toolIds, ...prompt } = definition.conversation_config.agent.prompt;
+  return { ...definition, conversation_config: { ...definition.conversation_config,
+    agent: { ...definition.conversation_config.agent, prompt },
+  } };
 }
 
 const usage = "Usage: agent-update.ts plan [--permission-only] | apply | readback";

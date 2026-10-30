@@ -7,6 +7,7 @@ export const cfg: Config = {
   ownerEmail: "owner@example.com", ownerSubject: "owner-test", ownerName: "Test Owner",
   selfNumber: "+12025550123", callbackNumber: "+12025550123", fromNumber: "+14155550123",
   twilioAccountSid: "AC" + "1".repeat(32), twilioNumberSid: "PN" + "2".repeat(32), elevenAgentId: "agent_test", elevenPhoneId: "phone_test", voiceId: "stock_voice",
+  twilioApplicationSid: "AP" + "a".repeat(32),
 };
 export const input: StartInput = {
   request_id: "test-reminder-1", task_type: "reminder", recipient: "self", objective: "Leave a reminder", context: "This is a synthetic test.", success_criteria: ["One full message after the beep"], constraints: { permitted_commitments: [], acceptable_alternatives: [], information_may_disclose: ["The supplied reminder"] }, voicemail: { action: "leave_message", message: "Automated recorded test reminder: recycle tomorrow." },

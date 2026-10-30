@@ -19,7 +19,7 @@ async function hmac(secret: string, data: string, hash: string) {
   const key = await crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash }, false, ["sign"]);
   return new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(data)));
 }
-function equal(a: string, b: string) {
+export function equal(a: string, b: string) {
   if (a.length !== b.length) return false;
   let diff = 0; for (let n = 0; n < a.length; n++) diff |= a.charCodeAt(n) ^ b.charCodeAt(n);
   return diff === 0;
@@ -43,7 +43,7 @@ export async function verifyTwilio(url: string, body: string, signature: string 
   if (!signature || !equal(signature, expected)) throw new CallError("BAD_SIGNATURE", "Invalid Twilio signature.", false, 401);
   return params;
 }
-export async function readLimited(request: Request, limit: number) {
+export async function readLimited(request: Pick<Request, "body">, limit: number) {
   if (!request.body) return "";
   const reader = request.body.getReader();
   let size = 0; const chunks: Uint8Array[] = [];

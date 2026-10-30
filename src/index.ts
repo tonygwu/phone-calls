@@ -2,7 +2,7 @@ import { createMcpHandler } from "agents/mcp/server";
 import { z } from "zod";
 import { authenticate, readLimited, verifyEleven, verifyTwilio } from "./auth";
 import { config, secret, type Env } from "./config";
-import { CallError, publicError } from "./contracts";
+import { callId, CallError, publicError } from "./contracts";
 import { createServer } from "./mcp";
 export { CallLedger } from "./ledger";
 
@@ -26,10 +26,36 @@ export default {
         if (!response.ok) return response;
         return Response.json({ received: true });
       }
-      if (url.pathname === "/webhooks/twilio/inbound" && request.method === "POST" && !url.search) {
+      if (url.pathname === "/webhooks/twilio/inbound" && request.method === "POST") {
+        const op = url.searchParams.get("op");
+        if (op === "owner") {
+          if (!request.headers.get("Content-Type")?.startsWith("application/json")) throw new CallError("BAD_CONTENT_TYPE", "The owner connection tool must send JSON.", false, 415);
+          const args = z.strictObject({ call_id: callId }).parse(JSON.parse(await readLimited(request, 64 * 1024)));
+          return stub.fetch("https://ledger/conference-owner", { method: "POST", body: JSON.stringify({ ...args, authorization: request.headers.get("Authorization") }) });
+        }
         if (!request.headers.get("Content-Type")?.startsWith("application/x-www-form-urlencoded")) throw new CallError("BAD_CONTENT_TYPE", "Twilio must send form data.", false, 415);
         const raw = await readLimited(request, 64 * 1024);
-        const form = await verifyTwilio(`${c.publicOrigin}/webhooks/twilio/inbound`, raw, request.headers.get("x-twilio-signature"), secret(env, "TWILIO_AUTH_TOKEN"));
+        const form = await verifyTwilio(url.toString(), raw, request.headers.get("x-twilio-signature"), secret(env, "TWILIO_AUTH_TOKEN"));
+        if (form.get("AccountSid") !== c.twilioAccountSid) throw new CallError("IDENTITY_MISMATCH", "Callback belongs to another Twilio account.", false, 403);
+        if (op) {
+          const sid = z.string().regex(/^CA[0-9a-fA-F]{32}$/).parse(form.get("CallSid"));
+          let path: string, body: Record<string, unknown>;
+          if (op === "assistant") {
+            path = "conference-assistant";
+            body = { call_id: callId.parse(form.get("Param_call_id")), sid };
+          } else {
+            const id = callId.parse(url.searchParams.get("call_id"));
+            if (op === "status") {
+              path = "conference-status";
+              body = { call_id: id, sid, role: z.enum(["business", "assistant", "owner"]).parse(url.searchParams.get("role")) };
+            } else if (op === "owner-answer" || op === "owner-accept") {
+              path = "conference-owner-answer";
+              body = { call_id: id, sid, ...(op === "owner-accept" ? { digits: form.get("Digits") ?? "" } : {}) };
+            } else throw new CallError("NOT_FOUND", "Unknown conference callback.", false, 404);
+          }
+          return stub.fetch(`https://ledger/${path}`, { method: "POST", body: JSON.stringify(body) });
+        }
+        if (url.search) throw new CallError("NOT_FOUND", "Unknown inbound callback.", false, 404);
         if (form.get("AccountSid") !== c.twilioAccountSid || form.get("To") !== c.fromNumber) throw new CallError("WRONG_NUMBER", "Inbound callback does not match the managed number.", false, 403);
         return new Response('<Response><Reject reason="rejected"/></Response>', { headers: { "Content-Type": "application/xml" } });
       }
