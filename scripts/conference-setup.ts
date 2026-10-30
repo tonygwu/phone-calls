@@ -69,13 +69,25 @@ export function conferenceTools(publicOrigin: string) {
   ];
 }
 
-/** Replace explicitly managed fields, preserving every other saved setting. */
+/** Preserve settings using authoritative tool fields, not their legacy projection. */
 export function conferenceAgentPatch(live: Agent, managedPrompt: string, toolIds: string[]) {
   const before = agentSchema.parse(live).conversation_config;
   toolIds.forEach(value => cleanId.parse(value));
+  // ElevenLabs rejects tools together with tool_ids. The GET projection may
+  // duplicate built-in tools; omit it only when every entry is accounted for.
+  const { tools: legacyTools, ...prompt } = before.agent.prompt;
+  if (legacyTools !== undefined && legacyTools !== null) {
+    const legacy = z.array(object).parse(legacyTools);
+    if (legacy.length) {
+      const builtins = object.parse(prompt.built_in_tools);
+      if (legacy.some(tool => tool.type !== "system" || !Object.values(builtins).some(builtin => canonical(builtin) === canonical(tool)))) {
+        throw new SetupError("Saved legacy tools are not fully represented by built_in_tools. Normalize the saved agent's tools before conference setup.");
+      }
+    }
+  }
   return { conversation_config: {
     ...before,
-    agent: { ...before.agent, prompt: { ...before.agent.prompt, prompt: managedPrompt,
+    agent: { ...before.agent, prompt: { ...prompt, prompt: managedPrompt,
       tool_ids: [...new Set([...before.agent.prompt.tool_ids, ...toolIds])],
     } },
     asr: { ...before.asr, user_input_audio_format: "ulaw_8000" },

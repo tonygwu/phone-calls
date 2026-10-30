@@ -87,6 +87,33 @@ test("unreviewed plan refuses apply before any provider request or mutation", ()
   await assert.rejects(s.apply()); assert.equal(s.requests.length, 0);
 }));
 
+test("saved legacy system-tool projection is omitted when attaching tool IDs", () => scenario(async s => {
+  const before = s.getAgent();
+  const end = { type: "system", name: "end_call", params: { system_tool_type: "end_call" } };
+  before.conversation_config.agent.prompt.built_in_tools = { end_call: end };
+  before.conversation_config.agent.prompt.tools = [end];
+  s.setAgent(before);
+  s.setBeforeRequest((_url, init) => {
+    if (init.method === "PATCH") {
+      const prompt = JSON.parse(init.body).conversation_config.agent.prompt;
+      if ("tools" in prompt && prompt.tool_ids.length) return Response.json({ detail: { status: "both_tools_and_tool_ids_provided" } }, { status: 400 });
+    }
+  });
+  await s.prepare(); s.approve(); await s.apply();
+  const patch = JSON.parse(s.requests.find(r => r.method === "PATCH").body);
+  assert.ok(!Object.hasOwn(patch.conversation_config.agent.prompt, "tools"));
+  assert.deepEqual(patch.conversation_config.agent.prompt.built_in_tools, { end_call: end });
+  assert.deepEqual(s.getAgent().conversation_config.agent.prompt.tool_ids, ["owner_existing_tool", "created_tool_0"]);
+}));
+
+test("unrepresented legacy tools fail preparation before creating resources", () => scenario(async s => {
+  const before = s.getAgent();
+  before.conversation_config.agent.prompt.tools = [{ type: "webhook", name: "legacy_owner_tool" }];
+  s.setAgent(before);
+  await assert.rejects(s.prepare(), /legacy tools.*built_in_tools/);
+  assert.ok(s.requests.every(r => r.method === "GET"));
+}));
+
 test("apply requires review evidence that the compatible Worker was deployed first", () => scenario(async s => {
   await s.prepare(); s.approve(); s.requests.length = 0;
   const file = s.at("private/conference-setup/review.json");

@@ -35,6 +35,10 @@ An exclusive execution lock and persisted mutation intents prevent duplicate set
 
 Later `agent:plan`, `agent:apply` and `agent:readback` maintenance preserves all installed webhook tool IDs. Conference setup owns the owner tool's creation and attachment. Review its configuration through the separate conference readbacks; a general prompt update does not validate or recreate that resource.
 
+ElevenLabs rejects an update containing both deprecated inline `tools` and `tool_ids`. Setup omits the deprecated field only when every entry exactly matches a saved `built_in_tools` definition. If a legacy tool lacks that representation, preparation fails before resource creation so its migration can be reviewed separately. Existing referenced tool IDs remain preserved.
+
+If the provider explicitly rejects an agent update and a fresh readback proves the saved agent is unchanged, archive the original plan, journal, approval and raw rejection. A separately reviewed replacement plan may reuse the confirmed App and tool IDs and send one corrected agent update. Preserve the rejected attempt in the recovery evidence. Do not repeat creation requests or treat an uncertain outcome as a confirmed rejection.
+
 To roll back, first stop new conference calls and confirm existing conferences have ended. A separately reviewed rollback can restore the saved conversation configuration and prior local configuration from the plan. Preserve the Durable Object namespace and existing call history. Do not delete an App or tool used by another deployment or by an active call.
 
 ## Verification limits
