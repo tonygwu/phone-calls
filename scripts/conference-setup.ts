@@ -96,7 +96,7 @@ export function conferenceAgentPatch(live: Agent, managedPrompt: string, toolIds
 }
 
 /** Persist intent before a mutation. Unknown results require manual reconciliation. */
-export async function once<T>(journal: Journal, name: string, persist: () => void, action: () => Promise<T>): Promise<T> {
+export async function once<T>(journal: Pick<Journal, "steps">, name: string, persist: () => void, action: () => Promise<T>): Promise<T> {
   const previous = journal.steps[name];
   if (previous?.state === "done") {
     if (!("value" in previous)) throw new SetupError("Completed setup step lacks its recorded response.");

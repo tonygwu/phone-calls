@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { dispatchBody } from "./agent";
 import { readLimited } from "./auth";
-import { secret } from "./config";
-import { CallError, terminal, type ConferenceRole, type PhoneStatus, type Task } from "./contracts";
+import { secret, type Config } from "./config";
+import { callId, CallError, terminal, type ConferenceRole, type PhoneStatus, type Task } from "./contracts";
 import { LiveProviders, ProviderHttpError, twilioCallSchema, type TwilioCall } from "./providers";
 
 const cf = z.string().regex(/^CF[0-9a-fA-F]{32}$/);
@@ -15,6 +15,7 @@ export interface ConferenceProviders {
   create(task: Task, role: ConferenceRole): Promise<{ callSid: string; conferenceSid?: string }>;
   observe(task: Task, role: ConferenceRole, sid: string): Promise<TwilioCall>;
   observeApp(task: Task, sid: string): Promise<TwilioCall>;
+  resolveSip(sid: string): Promise<{ taskId: string; call: TwilioCall }>;
   finish(task: Task, role: ConferenceRole, status: PhoneStatus): Promise<void>;
   finishApp(task: Task, status: PhoneStatus): Promise<void>;
   close(task: Task): Promise<void>;
@@ -28,6 +29,11 @@ export const conferenceUrl = (origin: string, op: string, taskId: string, role?:
   return url.toString();
 };
 export const assistantDestination = (task: Task, applicationSid: string) => `app:${applicationSid}?call_id=${task.id}`;
+export const sipAssistantFrom = (taskId: string) => `assistant-${taskId}`;
+export function sipDestination(config: Config) {
+  if (!config.conferenceSip) throw new CallError("SETUP_REQUIRED", "Conference SIP routing is not configured.", false, 503);
+  return `sip:${config.conferenceSip.identifier}@sip.rtc.elevenlabs.io:5061;transport=tls;secure=true`;
+}
 // The owner invitation stops ringing before carrier voicemail usually answers.
 // Twilio may add about 5 seconds to this. The business and assistant keep 60.
 export const OWNER_RING_SECONDS = 25;
@@ -42,11 +48,17 @@ export class LiveConferenceProviders extends LiveProviders implements Conference
   private destination(task: Task, role: ConferenceRole) {
     if (role === "business") return task.to;
     if (role === "owner") return this.c.selfNumber;
+    if (task.conference?.assistantTransport === "sip") return sipDestination(this.c);
     if (!this.c.twilioApplicationSid) throw new CallError("SETUP_REQUIRED", "Conference TwiML application is not configured.", false, 503);
     return assistantDestination(task, this.c.twilioApplicationSid);
   }
   async create(task: Task, role: ConferenceRole) {
     const body = new URLSearchParams({ From: this.c.fromNumber, To: this.destination(task, role), Timeout: String(role === "owner" ? OWNER_RING_SECONDS : 60), Record: "false", StatusCallback: conferenceUrl(this.c.publicOrigin, "status", task.id, role), StatusCallbackMethod: "POST" });
+    if (role === "assistant" && task.conference?.assistantTransport === "sip") {
+      body.set("From", sipAssistantFrom(task.id));
+      body.set("SipAuthUsername", this.c.conferenceSip!.username);
+      body.set("SipAuthPassword", secret(this.env, "ELEVENLABS_SIP_PASSWORD"));
+    }
     for (const event of ["initiated", "ringing", "answered", "completed"]) body.append("StatusCallbackEvent", event);
     // Each leg has the task's remaining time, in addition to the durable watchdog.
     body.set("TimeLimit", String(Math.max(1, Math.ceil(((task.deadline ?? task.created + task.duration * 1000) - Date.now()) / 1000))));
@@ -66,8 +78,10 @@ export class LiveConferenceProviders extends LiveProviders implements Conference
   }
   private assertCall(task: Task, role: ConferenceRole, sid: string, call: TwilioCall) {
     // Custom App parameters belong to the creation request, not Calls.to.
-    const destination = role === "assistant" ? `app:${this.c.twilioApplicationSid}` : this.destination(task, role);
-    if (call.sid !== sid || call.account_sid !== this.c.twilioAccountSid || call.from !== this.c.fromNumber || call.to !== destination) throw new CallError("IDENTITY_MISMATCH", "Conference call identity, source or destination does not match this task.", false, 502);
+    const sip = role === "assistant" && task.conference?.assistantTransport === "sip";
+    const destination = role === "assistant" && !sip ? `app:${this.c.twilioApplicationSid}` : this.destination(task, role);
+    const from = sip ? sipAssistantFrom(task.id) : this.c.fromNumber;
+    if (call.sid !== sid || call.account_sid !== this.c.twilioAccountSid || call.from !== from || call.to !== destination || (sip && call.direction !== "outbound-api")) throw new CallError("IDENTITY_MISMATCH", "Conference call identity, source or destination does not match this task.", false, 502);
   }
   private assertApp(sid: string, call: z.infer<typeof appCallSchema>) {
     if (call.sid !== sid || call.account_sid !== this.c.twilioAccountSid || call.from !== this.c.fromNumber || call.to !== this.c.twilioApplicationSid || call.direction !== "inbound") throw new CallError("IDENTITY_MISMATCH", "Assistant App call identity, source, destination or direction does not match this installation.", false, 502);
@@ -82,9 +96,17 @@ export class LiveConferenceProviders extends LiveProviders implements Conference
     this.assertApp(sid, call);
     return call;
   }
+  async resolveSip(sid: string) {
+    ca.parse(sid);
+    const call = await this.twilio(`${this.accountPath()}/Calls/${sid}.json`, twilioCallSchema);
+    const taskId = callId.safeParse(call.from.slice("assistant-".length));
+    if (!taskId.success || call.from !== sipAssistantFrom(taskId.data) || call.sid !== sid || call.account_sid !== this.c.twilioAccountSid || call.direction !== "outbound-api" || call.to !== sipDestination(this.c)) throw new CallError("IDENTITY_MISMATCH", "SIP call identity does not match this installation.", false, 502);
+    return { taskId: taskId.data, call };
+  }
   async finish(task: Task, role: ConferenceRole, status: PhoneStatus) {
     const sid = task.conference?.legs[role].sid;
     if (!sid) throw new CallError("CALL_ID_UNKNOWN", "Conference participant call identity is unknown.", false, 409);
+    if (role === "assistant" && task.conference?.assistantTransport === "sip") status = (await this.observe(task, role, sid)).status;
     if (terminal.has(status)) return;
     const call = await this.twilio(`${this.accountPath()}/Calls/${sid}.json`, twilioCallSchema, new URLSearchParams({ Status: status === "queued" || status === "ringing" ? "canceled" : "completed" }));
     this.assertCall(task, role, sid, call);

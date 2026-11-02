@@ -6,14 +6,18 @@ import { dispatchBody } from "./agent";
 const sid = z.string().regex(/^CA[0-9a-fA-F]{32}$/);
 export const dispatchResponse = z.object({ success: z.boolean(), message: z.string(), conversation_id: z.string().nullable(), callSid: sid.nullable() });
 const phoneStatus = z.enum(["queued", "ringing", "in-progress", "completed", "busy", "no-answer", "canceled", "failed"]);
-export const twilioCallSchema = z.object({ sid, account_sid: z.string(), from: z.string(), to: z.string(), status: phoneStatus, price: z.string().nullable(), price_unit: z.string().nullable(), start_time: z.string().nullable(), duration: z.string().nullable() });
+export const twilioCallSchema = z.object({ sid, account_sid: z.string(), from: z.string(), to: z.string(), direction: z.string().optional(), status: phoneStatus, price: z.string().nullable(), price_unit: z.string().nullable(), start_time: z.string().nullable(), duration: z.string().nullable() });
+const phoneIdentity = { call_sid: sid, phone_number_id: z.string(), agent_number: z.string(), external_number: z.string() };
 const turnSchema = z.object({ role: z.enum(["user", "agent"]), message: z.string().nullish(), time_in_call_secs: z.number().nonnegative(), tool_calls: z.array(z.unknown()).nullish(), tool_results: z.array(z.unknown()).nullish() });
 export const conversationSchema = z.object({
   agent_id: z.string(), conversation_id: z.string(), user_id: z.string().nullish(),
   status: z.enum(["initiated", "in-progress", "processing", "done", "failed"]), has_audio: z.boolean(),
   conversation_initiation_client_data: z.object({ user_id: z.string().nullish(), dynamic_variables: z.record(z.string(), z.unknown()).optional() }).optional(),
   transcript: z.array(turnSchema),
-  metadata: z.object({ start_time_unix_secs: z.number().int(), call_duration_secs: z.number().nonnegative(), cost_fiat: z.number().nonnegative().nullable(), phone_call: z.object({ type: z.literal("twilio"), call_sid: sid, phone_number_id: z.string(), agent_number: z.string(), external_number: z.string(), direction: z.literal("outbound") }).nullish() }),
+  metadata: z.object({ start_time_unix_secs: z.number().int(), call_duration_secs: z.number().nonnegative(), cost_fiat: z.number().nonnegative().nullable(), phone_call: z.discriminatedUnion("type", [
+    z.object({ ...phoneIdentity, type: z.literal("twilio"), direction: z.literal("outbound") }),
+    z.object({ ...phoneIdentity, type: z.literal("sip_trunking"), direction: z.literal("inbound") }),
+  ]).nullish() }),
   analysis: z.object({ transcript_summary: z.string(), data_collection_results: z.record(z.string(), z.object({ value: z.unknown(), rationale: z.string() })).optional() }).nullish(),
 });
 export type Conversation = z.infer<typeof conversationSchema>;
@@ -106,7 +110,7 @@ export function correlate(task: Task, c: Conversation, config: Config) {
   const correlation = c.user_id ?? c.conversation_initiation_client_data?.user_id;
   if (correlation !== task.id || c.agent_id !== config.elevenAgentId || (task.conversationId && c.conversation_id !== task.conversationId)) throw new CallError("IDENTITY_MISMATCH", "Conversation correlation does not match this task.", false, 502);
   const phone = c.metadata.phone_call;
-  if (phone && (phone.agent_number !== config.fromNumber || phone.external_number !== task.to || phone.phone_number_id !== config.elevenPhoneId || (task.callSid && phone.call_sid !== task.callSid))) throw new CallError("IDENTITY_MISMATCH", "Conversation telephone metadata does not match this task.", false, 502);
+  if (phone && (phone.type !== "twilio" || phone.agent_number !== config.fromNumber || phone.external_number !== task.to || phone.phone_number_id !== config.elevenPhoneId || (task.callSid && phone.call_sid !== task.callSid))) throw new CallError("IDENTITY_MISMATCH", "Conversation telephone metadata does not match this task.", false, 502);
 }
 export function applyConversation(task: Task, c: Conversation, observation: number, recordCallIdentity = true) {
   if (task.elevenObservation !== undefined && observation <= task.elevenObservation) return;

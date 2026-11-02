@@ -18,6 +18,8 @@ export default defineConfig({
       ELEVENLABS_API_KEY: bindings.secret(),
       ELEVENLABS_WEBHOOK_SECRET: bindings.secret(),
       TWILIO_AUTH_TOKEN: bindings.secret(),
+      ELEVENLABS_SIP_PASSWORD: bindings.secret(),
+      ELEVENLABS_INITIATION_SECRET: bindings.secret(),
     },
     observability: { enabled: false },
   },

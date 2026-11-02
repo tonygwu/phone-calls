@@ -54,6 +54,8 @@ export type ConferenceRole = "business" | "assistant" | "owner";
 export type ConferenceLeg = { status: PhoneStatus | "not_started"; sid?: string; costMicros?: number; observation?: number; answeredBy?: string };
 export interface ConferenceState {
   token: string;
+  // Absent on persisted conferences created before direct SIP support.
+  assistantTransport?: "app" | "sip";
   sid?: string;
   closed: boolean;
   closing: boolean;

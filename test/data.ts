@@ -9,6 +9,7 @@ export const cfg: Config = {
   twilioAccountSid: "AC" + "1".repeat(32), twilioNumberSid: "PN" + "2".repeat(32), elevenAgentId: "agent_test", elevenPhoneId: "phone_test", voiceId: "stock_voice",
   twilioApplicationSid: "AP" + "a".repeat(32),
 };
+export const sipCfg: Config = { ...cfg, conferenceSip: { identifier: "runtime-assistant", phoneId: "runtime_sip_phone", username: "runtime-sip-user" } };
 export const input: StartInput = {
   request_id: "test-reminder-1", task_type: "reminder", recipient: "self", objective: "Leave a reminder", context: "This is a synthetic test.", success_criteria: ["One full message after the beep"], constraints: { permitted_commitments: [], acceptable_alternatives: [], information_may_disclose: ["The supplied reminder"] }, voicemail: { action: "leave_message", message: "Automated recorded test reminder: recycle tomorrow." },
 };

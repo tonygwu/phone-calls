@@ -114,3 +114,8 @@ Installation and ChatGPT use are in `docs/CLIENTS.md`.
 
 Use `npm run agent:plan`, `agent:apply` and `agent:readback` to review, update and verify the existing ElevenLabs agent.
 These commands never dial.
+
+Use `npm run conference:sip -- prepare|apply` for the direct SIP owner-conference route.
+Preparation reads selected provider identities and saves a private plan. Apply requires its exact ship review and explicit resource-change authorization.
+It creates an encrypted inbound SIP route and initiation-header secret, reuses or creates the owner tool, and preserves unrelated agent settings.
+It updates local Worker configuration and secrets but never deploys or places calls. The earlier `conference:setup` command is retained for legacy App installations.

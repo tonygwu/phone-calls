@@ -1,6 +1,6 @@
 import { createMcpHandler } from "agents/mcp/server";
 import { z } from "zod";
-import { authenticate, readLimited, verifyEleven, verifyTwilio } from "./auth";
+import { authenticate, equal, readLimited, verifyEleven, verifyTwilio } from "./auth";
 import { config, secret, type Env } from "./config";
 import { callId, CallError, publicError } from "./contracts";
 import { createServer } from "./mcp";
@@ -28,6 +28,12 @@ export default {
       }
       if (url.pathname === "/webhooks/twilio/inbound" && request.method === "POST") {
         const op = url.searchParams.get("op");
+        if (op === "sip") {
+          if (!equal(request.headers.get("Authorization") ?? "", `Bearer ${secret(env, "ELEVENLABS_INITIATION_SECRET")}`)) throw new CallError("UNAUTHENTICATED", "Invalid initiation webhook authorization.", false, 401);
+          if (!request.headers.get("Content-Type")?.startsWith("application/json")) throw new CallError("BAD_CONTENT_TYPE", "SIP initiation must send JSON.", false, 415);
+          const args = z.object({ agent_id: z.literal(c.elevenAgentId), call_sid: z.string().regex(/^CA[0-9a-fA-F]{32}$/), conversation_id: z.string().min(1).max(200) }).parse(JSON.parse(await readLimited(request, 64 * 1024)));
+          return stub.fetch("https://ledger/conference-sip", { method: "POST", body: JSON.stringify({ sid: args.call_sid, conversation_id: args.conversation_id }) });
+        }
         if (op === "owner") {
           if (!request.headers.get("Content-Type")?.startsWith("application/json")) throw new CallError("BAD_CONTENT_TYPE", "The owner connection tool must send JSON.", false, 415);
           const args = z.strictObject({ call_id: callId }).parse(JSON.parse(await readLimited(request, 64 * 1024)));

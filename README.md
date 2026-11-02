@@ -54,8 +54,8 @@ For customer support, `owner_join: "when_live_agent"` rings you after a live rep
 Use `"when_needed"` to join only when your participation is required.
 The service permits up to three invitations, one at a time. You must answer and press **1** to join.
 The assistant stays in the conference. This feature requires separate [conference setup](docs/OWNER-CONFERENCES.md).
-The current connection method needs capacity for four simultaneous Twilio calls.
-Accounts limited to three concurrent calls cannot complete owner joining. See the conference guide before enabling this feature.
+The configured direct SIP path needs capacity for three simultaneous Twilio calls.
+Legacy App installations need four. See the conference guide before enabling this feature.
 See the [support example](examples/support-with-owner.json).
 
 ## Set up your own service

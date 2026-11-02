@@ -14,6 +14,12 @@ async function setup() {
     const body = await response.json() as any; expect(response.status).toBe(200); return body.data;
   }
   const started = await post("start", { ...input, task_type: "support", recipient: "+12125550123", owner_join: "when_live_agent" });
+  // Reconstruct a persisted App task from before the SIP configuration upgrade.
+  // Its callbacks and cleanup must still work with the current deployed config.
+  await runInDurableObject(stub, async (_instance, state) => {
+    const store = new SqlStore(state.storage), legacy = store.get(started.call_id)!;
+    delete legacy.conference!.assistantTransport; store.put(legacy);
+  });
   await runDurableObjectAlarm(stub);
   async function task() {
     let result!: Task;

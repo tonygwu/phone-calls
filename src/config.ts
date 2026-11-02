@@ -11,6 +11,10 @@ export const configSchema = z.strictObject({
   twilioAccountSid: z.string().regex(/^AC[a-fA-F0-9]{32}$/),
   twilioNumberSid: z.string().regex(/^PN[a-fA-F0-9]{32}$/),
   twilioApplicationSid: z.string().regex(/^AP[a-fA-F0-9]{32}$/).optional(),
+  conferenceSip: z.strictObject({
+    identifier: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+    phoneId: z.string().min(1), username: z.string().regex(/^[A-Za-z0-9_-]{1,64}$/),
+  }).optional(),
   fromNumber: usPhone,
   elevenAgentId: z.string().min(1), elevenPhoneId: z.string().min(1), voiceId: z.string().min(1),
 });
@@ -21,13 +25,18 @@ export interface Env {
   ELEVENLABS_API_KEY?: string;
   ELEVENLABS_WEBHOOK_SECRET?: string;
   TWILIO_AUTH_TOKEN?: string;
+  ELEVENLABS_SIP_PASSWORD?: string;
+  ELEVENLABS_INITIATION_SECRET?: string;
 }
 export function config(env: Env): Config {
   if (!env.SERVICE_CONFIG) throw new CallError("SETUP_REQUIRED", "SERVICE_CONFIG has not been installed.", false, 503);
-  try { return configSchema.parse(JSON.parse(env.SERVICE_CONFIG)); }
+  let parsed: Config;
+  try { parsed = configSchema.parse(JSON.parse(env.SERVICE_CONFIG)); }
   catch { throw new CallError("INVALID_CONFIG", "SERVICE_CONFIG is invalid. Run the local preflight to see field-level diagnostics.", false, 503); }
+  if (parsed.conferenceSip) { secret(env, "ELEVENLABS_SIP_PASSWORD"); secret(env, "ELEVENLABS_INITIATION_SECRET"); }
+  return parsed;
 }
-export function secret(env: Env, name: "ELEVENLABS_API_KEY" | "ELEVENLABS_WEBHOOK_SECRET" | "TWILIO_AUTH_TOKEN") {
+export function secret(env: Env, name: "ELEVENLABS_API_KEY" | "ELEVENLABS_WEBHOOK_SECRET" | "TWILIO_AUTH_TOKEN" | "ELEVENLABS_SIP_PASSWORD" | "ELEVENLABS_INITIATION_SECRET") {
   const value = env[name];
   if (!value) throw new CallError("SETUP_REQUIRED", `${name} has not been installed.`, false, 503);
   return value;

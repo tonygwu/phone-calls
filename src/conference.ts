@@ -4,6 +4,7 @@ import { CallError, DAY, publicError, terminal, type ConferenceLeg, type Confere
 import { conferenceTwiml, conferenceUrl, type ConferenceProviders } from "./conference-provider";
 import { applyConversation, micros, ProviderHttpError, type Conversation, type Providers, type TwilioCall } from "./providers";
 import type { Store } from "./store";
+import { dispatchBody } from "./agent";
 
 const roles: ConferenceRole[] = ["business", "assistant", "owner"];
 const idleLeg = (): ConferenceLeg => ({ status: "not_started" });
@@ -18,7 +19,7 @@ const hangup = "<Response><Hangup/></Response>";
 const machine = (answeredBy?: string) => answeredBy === "fax" || answeredBy?.startsWith("machine_") === true;
 // Derived from durable state, so a restart or replay cannot reset the count.
 export const ownerAttempts = (c: ConferenceState) => [...(c.ownerHistory ?? []), ...(c.legs.owner.status === "not_started" ? [] : [c.legs.owner])];
-export const newConference = () => ({ token: crypto.randomUUID(), closed: false, closing: false, ownerAccepted: false, registration: "not_started" as const, legs: { business: idleLeg(), assistant: idleLeg(), owner: idleLeg() } });
+export const newConference = (assistantTransport: "app" | "sip" = "app") => ({ token: crypto.randomUUID(), assistantTransport, closed: false, closing: false, ownerAccepted: false, registration: "not_started" as const, legs: { business: idleLeg(), assistant: idleLeg(), owner: idleLeg() } });
 
 export class ConferenceController {
   constructor(private store: Store, private transport: ConferenceProviders, private providers: Providers, private config: Config, private now: () => number) {}
@@ -136,12 +137,32 @@ export class ConferenceController {
     const task = this.require(id), phone = conversation.metadata.phone_call;
     const user = conversation.user_id ?? conversation.conversation_initiation_client_data?.user_id;
     if (user !== task.id || conversation.agent_id !== this.config.elevenAgentId || (task.conversationId && task.conversationId !== conversation.conversation_id)) throw new CallError("IDENTITY_MISMATCH", "Conversation does not belong to this conference.", false, 502);
-    if (phone && (phone.call_sid !== task.conference.assistantApp?.sid || phone.agent_number !== this.config.fromNumber || phone.external_number !== task.to)) throw new CallError("IDENTITY_MISMATCH", "Conversation telephone metadata does not match the assistant App connection.", false, 502);
+    if (task.conference.assistantTransport === "sip") {
+      if (!phone || phone.type !== "sip_trunking" || phone.call_sid !== task.conference.legs.assistant.sid || phone.phone_number_id !== this.config.conferenceSip?.phoneId) throw new CallError("IDENTITY_MISMATCH", "Conversation telephone metadata does not match the assistant SIP connection.", false, 502);
+    } else if (phone && (phone.type !== "twilio" || phone.call_sid !== task.conference.assistantApp?.sid || phone.agent_number !== this.config.fromNumber || phone.external_number !== task.to)) throw new CallError("IDENTITY_MISMATCH", "Conversation telephone metadata does not match the assistant App connection.", false, 502);
     applyConversation(task, conversation, observation, false);
     task.nextCheck = this.now(); this.store.put(task);
   }
+  async sip(sid: string, conversationId: string) {
+    const resolved = await this.transport.resolveSip(sid);
+    let task = this.open(resolved.taskId);
+    if (task.conference.assistantTransport !== "sip" || resolved.call.sid !== sid || (task.conversationId && task.conversationId !== conversationId)) throw new CallError("IDENTITY_MISMATCH", "SIP initiation does not match this conference.", false, 502);
+    const observation = this.store.nextObservation();
+    this.bind(task.id, "assistant", sid);
+    this.applyCall(task.id, "assistant", resolved.call, observation);
+    task = this.open(task.id);
+    task.conversationId = conversationId; task.conference.registration = "done"; task.nextCheck = this.now();
+    this.store.put(task);
+    const data = dispatchBody(task, this.config).conversation_initiation_client_data;
+    // ElevenLabs accepts 60 to 7200 seconds. Twilio and the watchdog still enforce
+    // the requested deadline, including a remaining budget shorter than 60 seconds.
+    const remaining = Math.ceil(((task.deadline ?? task.created + task.duration * 1000) - this.now()) / 1000);
+    data.conversation_config_override.conversation.max_duration_seconds = Math.max(60, Math.min(7200, remaining, task.duration));
+    return { type: "conversation_initiation_client_data" as const, ...data };
+  }
   async assistant(id: string, sid: string) {
     let task = this.open(id);
+    if (task.conference.assistantTransport === "sip") throw new CallError("IDENTITY_MISMATCH", "A SIP conference cannot attach an App call.", false, 502);
     if (task.conference.legs.assistant.status === "not_started") throw new CallError("UNEXPECTED_PARTICIPANT", "The assistant participant was not requested.", false, 409);
     if (task.conference.assistantApp?.sid && task.conference.assistantApp.sid !== sid) throw new CallError("IDENTITY_MISMATCH", "Conflicting assistant App call identity.", false, 502);
     // The signed custom call_id correlates this receiving leg to the task.
@@ -245,7 +266,7 @@ export class ConferenceController {
         task = this.require(id);
         // Connect the internal AI participant before dialing an instant-answer
         // menu. The signed App callback schedules work after registration.
-        if (task.conference.registration === "done" && task.conference.legs.assistant.status === "in-progress" && task.conference.assistantApp?.status === "in-progress") await this.create(id, "business");
+        if (task.conference.registration === "done" && task.conference.legs.assistant.status === "in-progress" && (task.conference.assistantTransport === "sip" || task.conference.assistantApp?.status === "in-progress")) await this.create(id, "business");
       }
       const observations = await Promise.allSettled([...roles.map(role => this.refresh(id, role)), this.refreshApp(id), this.refreshEarlier(id)]);
       const failure = observations.find(result => result.status === "rejected");

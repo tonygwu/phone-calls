@@ -41,6 +41,7 @@ function makeScenario(store: SqlStore, autoRegister = true) {
     }),
     observe: vi.fn(async (_task: Task, role: ConferenceRole, sid: string) => call(role, sid)),
     observeApp: vi.fn(async (_task: Task, sid: string) => ({ ...call("assistant", sid), to: conferenceConfig.twilioApplicationSid, status: appStatus.value })),
+    resolveSip: vi.fn(async () => { throw Error("Legacy App transport cannot resolve a SIP call"); }),
     finish: vi.fn(async (task: Task, role: ConferenceRole) => { if (role === "owner") ownerStatus[task.conference!.legs.owner.sid!] = "completed"; else statuses[role] = "completed"; }),
     finishApp: vi.fn(async () => { appStatus.value = "completed"; }),
     close: vi.fn(async () => {}), register: vi.fn(async () => xml),

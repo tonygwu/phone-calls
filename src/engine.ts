@@ -17,11 +17,11 @@ export class CallEngine {
     const to = input.recipient === "self" ? this.config.selfNumber : input.recipient;
     const join = input.owner_join !== undefined && input.owner_join !== "disabled";
     if (join && (to === this.config.selfNumber || input.task_type === "reminder")) throw new CallError("INVALID_OWNER_JOIN", "Owner joining requires a call to someone else and cannot be used for reminders.");
-    if (join && (!this.config.twilioApplicationSid || !this.conferences)) throw new CallError("SETUP_REQUIRED", "Complete the reviewed conference setup before enabling owner joining.", false, 503);
+    if (join && ((!this.config.twilioApplicationSid && !this.config.conferenceSip) || !this.conferences)) throw new CallError("SETUP_REQUIRED", "Complete the reviewed conference setup before enabling owner joining.", false, 503);
     const duration = input.max_duration_seconds ?? (input.task_type === "reminder" ? 180 : 900);
     const now = this.now();
     const task: Task = { id: crypto.randomUUID(), input, to, duration, created: now, expires: now + RETENTION, telephone: "pending", outcome: "pending", cancelRequested: false, nextCheck: now, attempts: 0 };
-    if (join) task.conference = newConference();
+    if (join) task.conference = newConference(this.config.conferenceSip ? "sip" : "app");
     this.store.put(task);
     return this.view(task);
   }
@@ -202,7 +202,7 @@ export class CallEngine {
       call_id: task.id, telephone_status: task.telephone, task_outcome: task.outcome,
       created_at: new Date(task.created).toISOString(), expires_at: new Date(task.expires).toISOString(),
       cancel_requested: task.cancelRequested, termination_confirmed: task.cancelRequested && (task.conference ? task.conference.closed : terminal.has(task.telephone)),
-      ...(task.conference ? { owner_connection: this.conferences?.ownerView(task), conference: { conference_sid: task.conference.sid ?? null, closed: task.conference.closed, assistant_connection: task.conference.assistantApp ? { call_sid: task.conference.assistantApp.sid, telephone_status: task.conference.assistantApp.status, cost_usd: task.conference.assistantApp.costMicros === undefined ? null : task.conference.assistantApp.costMicros / 1e6 } : null, participants: Object.fromEntries(Object.entries(task.conference.legs).map(([role, leg]) => [role, { call_sid: leg.sid ?? null, telephone_status: leg.status, cost_usd: leg.costMicros === undefined ? null : leg.costMicros / 1e6 }])) } } : {}),
+      ...(task.conference ? { owner_connection: this.conferences?.ownerView(task), conference: { conference_sid: task.conference.sid ?? null, closed: task.conference.closed, assistant_transport: task.conference.assistantTransport ?? "app", assistant_connection: task.conference.assistantApp ? { call_sid: task.conference.assistantApp.sid, telephone_status: task.conference.assistantApp.status, cost_usd: task.conference.assistantApp.costMicros === undefined ? null : task.conference.assistantApp.costMicros / 1e6 } : null, participants: Object.fromEntries(Object.entries(task.conference.legs).map(([role, leg]) => [role, { call_sid: leg.sid ?? null, telephone_status: leg.status, cost_usd: leg.costMicros === undefined ? null : leg.costMicros / 1e6 }])) } } : {}),
       summary: task.summary ?? null, confirmation_details: task.confirmation ?? null, unresolved_questions: task.unresolved ?? null,
       evidence: task.evidence ?? null, delivery_verified: false,
       provider: { conversation_id: task.conversationId ?? null, call_sid: task.callSid ?? null },

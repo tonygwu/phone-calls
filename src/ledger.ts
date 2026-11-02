@@ -33,6 +33,12 @@ export class CallLedger extends DurableObject<Env> {
       }
       const body = await request.json();
       let data: Record<string, unknown>;
+      if (path === "/conference-sip") {
+        const args = z.strictObject({ sid: z.string().regex(/^CA[0-9a-fA-F]{32}$/), conversation_id: z.string().min(1).max(200) }).parse(body);
+        const initiation = await engine.conferences!.sip(args.sid, args.conversation_id);
+        await this.schedule();
+        return Response.json(initiation, { headers: { "Cache-Control": "no-store" } });
+      }
       if (path.startsWith("/conference-")) {
         const args = z.object({ call_id: callId, sid: z.string().regex(/^CA[0-9a-fA-F]{32}$/).optional(), role: z.enum(["business", "assistant", "owner"]).optional(), authorization: z.string().nullable().optional(), digits: z.string().optional(), answered_by: z.string().max(64).optional() }).parse(body);
         const conference = engine.conferences!;
