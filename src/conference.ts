@@ -35,11 +35,15 @@ export class ConferenceController {
   private open(id: string) {
     const task = this.require(id);
     if (task.conference.closed || task.conference.closing || task.cancelRequested || (task.deadline !== undefined && this.now() >= task.deadline)) throw new CallError("CALL_ENDED", "The conference has ended or is closing.", false, 409);
-    if ([task.conference.legs.business, task.conference.legs.assistant].some(leg => leg.status !== "not_started" && ended(leg))) throw new CallError("CALL_ENDED", "The recipient or assistant has disconnected.", false, 409);
+    if ([task.conference.legs.business, task.conference.legs.assistant, ...(task.conference.assistantApp ? [task.conference.assistantApp] : [])].some(leg => leg.status !== "not_started" && ended(leg))) throw new CallError("CALL_ENDED", "The recipient or assistant has disconnected.", false, 409);
     return task;
   }
   // An ended owner invitation keeps its own identity; late observations update only that attempt.
-  private leg(task: Task & { conference: ConferenceState }, role: ConferenceRole, sid: string) {
+  private leg(task: Task & { conference: ConferenceState }, role: ConferenceRole | "assistantApp", sid: string) {
+    if (role === "assistantApp") {
+      if (!task.conference.assistantApp) throw new CallError("CALL_ID_UNKNOWN", "Assistant App call identity is unknown.", false, 409);
+      return task.conference.assistantApp;
+    }
     if (role === "owner" && task.conference.legs.owner.sid !== sid) {
       const earlier = task.conference.ownerHistory?.find(leg => leg.sid === sid);
       if (earlier) return earlier;
@@ -81,7 +85,7 @@ export class ConferenceController {
       current.lastError = publicError(error); this.store.put(current);
     }
   }
-  private applyCall(id: string, role: ConferenceRole, call: TwilioCall, observation: number) {
+  private applyCall(id: string, role: ConferenceRole | "assistantApp", call: TwilioCall, observation: number) {
     const task = this.require(id), leg = this.leg(task, role, call.sid);
     if (leg.sid !== call.sid) throw new CallError("IDENTITY_MISMATCH", "Observation belongs to another participant.", false, 502);
     if (leg.observation !== undefined && observation <= leg.observation) return;
@@ -100,6 +104,12 @@ export class ConferenceController {
     const observation = this.store.nextObservation();
     const call = await this.transport.observe(task, role, sid);
     this.applyCall(id, role, call, observation);
+  }
+  private async refreshApp(id: string) {
+    const task = this.require(id), sid = task.conference.assistantApp?.sid;
+    if (!sid) return;
+    const observation = this.store.nextObservation();
+    this.applyCall(id, "assistantApp", await this.transport.observeApp(task, sid), observation);
   }
   // Prices arrive after a call ends, so observe ended invitations until each has one.
   private async refreshEarlier(id: string) {
@@ -126,15 +136,22 @@ export class ConferenceController {
     const task = this.require(id), phone = conversation.metadata.phone_call;
     const user = conversation.user_id ?? conversation.conversation_initiation_client_data?.user_id;
     if (user !== task.id || conversation.agent_id !== this.config.elevenAgentId || (task.conversationId && task.conversationId !== conversation.conversation_id)) throw new CallError("IDENTITY_MISMATCH", "Conversation does not belong to this conference.", false, 502);
-    if (phone && (phone.call_sid !== task.conference.legs.assistant.sid || phone.agent_number !== this.config.fromNumber || phone.external_number !== task.to)) throw new CallError("IDENTITY_MISMATCH", "Conversation telephone metadata does not match the assistant participant.", false, 502);
+    if (phone && (phone.call_sid !== task.conference.assistantApp?.sid || phone.agent_number !== this.config.fromNumber || phone.external_number !== task.to)) throw new CallError("IDENTITY_MISMATCH", "Conversation telephone metadata does not match the assistant App connection.", false, 502);
     applyConversation(task, conversation, observation, false);
     task.nextCheck = this.now(); this.store.put(task);
   }
   async assistant(id: string, sid: string) {
     let task = this.open(id);
-    // The authoritative call readback validates the configured App destination;
-    // the voice webhook need not contain an undocumented ApplicationSid field.
-    await this.status(id, "assistant", sid);
+    if (task.conference.legs.assistant.status === "not_started") throw new CallError("UNEXPECTED_PARTICIPANT", "The assistant participant was not requested.", false, 409);
+    if (task.conference.assistantApp?.sid && task.conference.assistantApp.sid !== sid) throw new CallError("IDENTITY_MISMATCH", "Conflicting assistant App call identity.", false, 502);
+    // The signed custom call_id correlates this receiving leg to the task.
+    // Its authoritative object must name this account, caller and private App.
+    const observation = this.store.nextObservation();
+    const call = await this.transport.observeApp(task, sid);
+    task = this.open(id);
+    if (task.conference.assistantApp?.sid && task.conference.assistantApp.sid !== sid) throw new CallError("IDENTITY_MISMATCH", "Conflicting assistant App call identity.", false, 502);
+    if (!task.conference.assistantApp) { task.conference.assistantApp = { sid, status: "queued" }; this.store.put(task); }
+    this.applyCall(id, "assistantApp", call, observation);
     task = this.open(id);
     if (task.conference.registration === "done" && task.conference.twiml) return task.conference.twiml;
     if (task.conference.registration !== "not_started") throw new CallError("REGISTRATION_UNKNOWN", "An earlier assistant connection is unresolved. Do not create another.", false, 409);
@@ -142,7 +159,7 @@ export class ConferenceController {
     try {
       const twiml = await this.transport.register(task);
       const current = this.require(id);
-      current.conference.registration = "done"; current.conference.twiml = twiml; this.store.put(current);
+      current.conference.registration = "done"; current.conference.twiml = twiml; current.nextCheck = this.now(); this.store.put(current);
       // Cancellation may have arrived during registration. Never connect after it.
       this.open(id);
       return twiml;
@@ -224,15 +241,16 @@ export class ConferenceController {
         await this.create(id, "assistant");
         task = this.require(id);
         if (task.conference.legs.assistant.sid && !ended(task.conference.legs.assistant)) await this.refresh(id, "assistant");
+        await this.refreshApp(id);
         task = this.require(id);
         // Connect the internal AI participant before dialing an instant-answer
         // menu. The signed App callback schedules work after registration.
-        if (task.conference.registration === "done" && task.conference.legs.assistant.status === "in-progress") await this.create(id, "business");
+        if (task.conference.registration === "done" && task.conference.legs.assistant.status === "in-progress" && task.conference.assistantApp?.status === "in-progress") await this.create(id, "business");
       }
-      const observations = await Promise.allSettled([...roles.map(role => this.refresh(id, role)), this.refreshEarlier(id)]);
+      const observations = await Promise.allSettled([...roles.map(role => this.refresh(id, role)), this.refreshApp(id), this.refreshEarlier(id)]);
       const failure = observations.find(result => result.status === "rejected");
       task = this.require(id);
-      if (["business", "assistant"].some(role => { const leg = task.conference.legs[role as ConferenceRole]; return leg.status !== "not_started" && ended(leg); })) task.conference.closing = true;
+      if (["business", "assistant"].some(role => { const leg = task.conference.legs[role as ConferenceRole]; return leg.status !== "not_started" && ended(leg); }) || (task.conference.assistantApp && ended(task.conference.assistantApp))) task.conference.closing = true;
       this.store.put(task);
       if (task.conference.closing && !task.conference.closed) await this.close(id);
       if (failure?.status === "rejected") throw failure.reason;
@@ -263,19 +281,25 @@ export class ConferenceController {
   }
   private async close(id: string) {
     let task = this.require(id);
-    const attempts = await Promise.allSettled(roles.map(async role => {
+    const attempts = await Promise.allSettled([...roles.map(async role => {
       const leg = this.require(id).conference.legs[role];
       if (leg.sid && !ended(leg)) {
         await this.transport.finish(this.require(id), role, leg.status as Task["telephone"]);
         await this.refresh(id, role);
       }
-    }));
+    }), (async () => {
+      const app = this.require(id).conference.assistantApp;
+      if (app?.sid && !ended(app)) {
+        await this.transport.finishApp(this.require(id), app.status as Task["telephone"]);
+        await this.refreshApp(id);
+      }
+    })()]);
     task = this.require(id);
     if (task.conference.sid) await this.transport.close(task);
     // Unknown attempted legs keep the watchdog alive; successful update responses
     // and an empty conference do not prove that a ringing outbound call stopped.
     task = this.require(id);
-    if (roles.every(role => ended(task.conference.legs[role]))) {
+    if (roles.every(role => ended(task.conference.legs[role])) && (!task.conference.assistantApp || ended(task.conference.assistantApp))) {
       task.conference.closed = true;
       if (task.conference.legs.business.status === "not_started") task.telephone = "not_dispatched";
       if (task.outcome === "pending" && task.conference.registration === "not_started") task.outcome = "failed";

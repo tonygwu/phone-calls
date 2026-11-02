@@ -61,6 +61,9 @@ export interface ConferenceState {
   registration: "not_started" | "dispatching" | "done" | "unknown";
   twiml?: string;
   legs: Record<ConferenceRole, ConferenceLeg>;
+  // Application Connect creates a separate inbound call that runs the Stream.
+  // It is not the outbound assistant participant stored in legs.assistant.
+  assistantApp?: ConferenceLeg;
   // Ended owner invitations, oldest first. legs.owner is always the latest attempt.
   ownerHistory?: ConferenceLeg[];
   // When the next owner invitation may start after a missed attempt.

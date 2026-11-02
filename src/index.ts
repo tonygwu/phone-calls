@@ -41,8 +41,10 @@ export default {
           const sid = z.string().regex(/^CA[0-9a-fA-F]{32}$/).parse(form.get("CallSid"));
           let path: string, body: Record<string, unknown>;
           if (op === "assistant") {
+            if (form.get("ApplicationSid") !== c.twilioApplicationSid) throw new CallError("IDENTITY_MISMATCH", "Callback belongs to another TwiML application.", false, 403);
             path = "conference-assistant";
-            body = { call_id: callId.parse(form.get("Param_call_id")), sid };
+            // The Participants API forwards query parameters without Param_.
+            body = { call_id: callId.parse(form.get("call_id")), sid };
           } else {
             const id = callId.parse(url.searchParams.get("call_id"));
             if (op === "status") {

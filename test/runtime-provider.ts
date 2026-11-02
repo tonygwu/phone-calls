@@ -3,7 +3,7 @@ import { cfg } from "./data";
 // Entire provider boundary is synthetic. Unknown URLs fail without network fallback.
 export function runtimeProvider() {
   const calls = new Map<string, { user: string; to: string; sid: string; started: number }>();
-  const conferenceCalls = new Map<string, { user: string; role: string; sid: string; to: string; status: string; room: string }>();
+  const conferenceCalls = new Map<string, { user: string; role: string; sid: string; to: string; status: string; room: string; direction: string }>();
   const registered = new Map<string, { to: string; assistantSid: string }>();
   return async (request: Request): Promise<Response> => {
     const url = new URL(request.url), path = url.pathname;
@@ -23,14 +23,20 @@ export function runtimeProvider() {
         const room = "CF" + user.replaceAll("-", "");
         if (role === "assistant" && form.get("To") !== `app:${cfg.twilioApplicationSid}?call_id=${user}`) throw new Error("Wrong TwiML application");
         if (role === "owner" && form.get("To") !== cfg.selfNumber) throw new Error("Wrong owner destination");
-        conferenceCalls.set(sid, { user, role, sid, room, to: form.get("To")!, status: "in-progress" });
+        // Twilio strips custom parameters from the outbound Calls resource, and
+        // invokes the App on a separate inbound call whose destination is its SID.
+        conferenceCalls.set(sid, { user, role, sid, room, to: form.get("To")!.split("?")[0], status: "in-progress", direction: "outbound-api" });
+        if (role === "assistant") {
+          const appSid = "CA" + user.replaceAll("-", "");
+          conferenceCalls.set(appSid, { user, role: "assistant-app", sid: appSid, room, to: cfg.twilioApplicationSid!, status: "in-progress", direction: "inbound" });
+        }
         if (participant) return Response.json({ account_sid: cfg.twilioAccountSid, conference_sid: room, call_sid: sid, label: role });
         return Response.json({ sid, account_sid: cfg.twilioAccountSid, from: cfg.fromNumber, to: form.get("To"), status: "queued", price: null, price_unit: null, start_time: null, duration: null });
       }
       const endingCall = [...conferenceCalls.values()].find(call => path === account + `/Calls/${call.sid}.json`);
       if (endingCall && ["canceled", "completed"].includes(form.get("Status")!)) {
         endingCall.status = form.get("Status")!;
-        return Response.json({ sid: endingCall.sid, account_sid: cfg.twilioAccountSid, from: cfg.fromNumber, to: endingCall.to, status: endingCall.status, price: "-0.01", price_unit: "USD", start_time: null, duration: null });
+        return Response.json({ sid: endingCall.sid, account_sid: cfg.twilioAccountSid, from: cfg.fromNumber, to: endingCall.to, direction: endingCall.direction, status: endingCall.status, price: "-0.01", price_unit: "USD", start_time: null, duration: null });
       }
       const endingRoom = [...conferenceCalls.values()].find(call => path === account + `/Conferences/${call.room}.json`);
       if (endingRoom && form.get("Status") === "completed") {
@@ -42,7 +48,7 @@ export function runtimeProvider() {
     if (url.hostname === "api.elevenlabs.io" && path === "/v1/convai/twilio/register-call" && request.method === "POST") {
       const body = await request.json() as any;
       const user = body.conversation_initiation_client_data.user_id;
-      const assistant = [...conferenceCalls.values()].find(call => call.user === user && call.role === "assistant");
+      const assistant = [...conferenceCalls.values()].find(call => call.user === user && call.role === "assistant-app");
       if (!assistant || body.agent_id !== cfg.elevenAgentId || body.from_number !== cfg.fromNumber || registered.has(user)) throw new Error("Unexpected or repeated conference registration");
       registered.set(user, { to: body.to_number, assistantSid: assistant.sid });
       return new Response('<Response><Connect><Stream url="wss://synthetic.example.invalid/audio"/></Connect></Response>');
@@ -58,7 +64,9 @@ export function runtimeProvider() {
     }
     if (request.method !== "GET") throw new Error("Unexpected test method");
     const conferenceCall = [...conferenceCalls.values()].find(call => url.hostname === "api.twilio.com" && path === account + `/Calls/${call.sid}.json`);
-    if (conferenceCall) return Response.json({ sid: conferenceCall.sid, account_sid: cfg.twilioAccountSid, from: cfg.fromNumber, to: conferenceCall.to, status: conferenceCall.status, price: "-0.01", price_unit: "USD", start_time: null, duration: null });
+    if (conferenceCall) return Response.json({ sid: conferenceCall.sid, account_sid: cfg.twilioAccountSid, from: cfg.fromNumber, to: conferenceCall.to, direction: conferenceCall.direction, status: conferenceCall.status, price: "-0.01", price_unit: "USD", start_time: null, duration: null });
+    const readRoom = [...conferenceCalls.values()].find(call => url.hostname === "api.twilio.com" && path === account + `/Conferences/${call.room}.json`);
+    if (readRoom) return Response.json({ sid: readRoom.room, account_sid: cfg.twilioAccountSid, friendly_name: "phone-" + readRoom.user, status: [...conferenceCalls.values()].some(call => call.room === readRoom.room && call.status === "in-progress") ? "in-progress" : "completed" });
     if (url.hostname === "api.elevenlabs.io") {
       if (path === "/v1/convai/conversations" && url.searchParams.has("user_id")) {
         const user = url.searchParams.get("user_id")!;

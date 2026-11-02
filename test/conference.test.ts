@@ -16,6 +16,7 @@ const sids = { business: "CA" + "3".repeat(32), assistant: "CA" + "4".repeat(32)
 // Owner invitation attempts in dialing order; the first keeps the established owner call ID.
 const ownerSids = [sids.owner, "CA" + "7".repeat(32), "CA" + "8".repeat(32), "CA" + "9".repeat(32)];
 const roomSid = "CF" + "6".repeat(32);
+const appSid = "CA" + "a".repeat(32);
 const xml = '<Response><Connect><Stream url="wss://synthetic.example.invalid/audio"/></Connect></Response>';
 async function scenario(fn: (s: ReturnType<typeof makeScenario>) => Promise<void>, autoRegister = true) {
   const stub = env.CALLS.get(env.CALLS.newUniqueId());
@@ -25,6 +26,7 @@ function makeScenario(store: SqlStore, autoRegister = true) {
   let now = NOW;
   let engine!: CallEngine;
   const statuses: Record<ConferenceRole, PhoneStatus> = { business: "in-progress", assistant: "in-progress", owner: "in-progress" };
+  const appStatus = { value: "in-progress" as PhoneStatus };
   // A per-attempt owner status overrides the shared owner status for that call ID only.
   const ownerStatus: Record<string, PhoneStatus> = {};
   // A per-attempt owner price overrides the default price; null means not yet available.
@@ -32,13 +34,15 @@ function makeScenario(store: SqlStore, autoRegister = true) {
   const call = (role: ConferenceRole, sid: string = sids[role]): TwilioCall => ({ sid, account_sid: cfg.twilioAccountSid, from: cfg.fromNumber, to: role === "business" ? support.recipient : role === "owner" ? cfg.selfNumber : "app:" + conferenceConfig.twilioApplicationSid, status: role === "owner" ? ownerStatus[sid] ?? statuses.owner : statuses[role], price: role === "owner" && sid in ownerPrice ? ownerPrice[sid] : "-0.01", price_unit: "USD", start_time: null, duration: null });
   const transport = {
     create: vi.fn(async (task: Task, role: ConferenceRole) => {
-      if (role === "assistant" && autoRegister) await engine.conferences!.assistant(task.id, sids.assistant);
+      if (role === "assistant" && autoRegister) await engine.conferences!.assistant(task.id, appSid);
       // Index by dial count, so a dial whose response was lost still owns its call ID.
       if (role === "owner") return { callSid: ownerSids[ownerDialCount() - 1] };
       return { callSid: sids[role], conferenceSid: roomSid };
     }),
     observe: vi.fn(async (_task: Task, role: ConferenceRole, sid: string) => call(role, sid)),
+    observeApp: vi.fn(async (_task: Task, sid: string) => ({ ...call("assistant", sid), to: conferenceConfig.twilioApplicationSid, status: appStatus.value })),
     finish: vi.fn(async (task: Task, role: ConferenceRole) => { if (role === "owner") ownerStatus[task.conference!.legs.owner.sid!] = "completed"; else statuses[role] = "completed"; }),
+    finishApp: vi.fn(async () => { appStatus.value = "completed"; }),
     close: vi.fn(async () => {}), register: vi.fn(async () => xml),
   } satisfies ConferenceProviders;
   const providers = fakeProviders();
@@ -46,7 +50,7 @@ function makeScenario(store: SqlStore, autoRegister = true) {
   const ownerDialCount = () => transport.create.mock.calls.filter(([, role]) => role === "owner").length;
   // Report the given final status for one owner attempt through a signed status callback.
   const endOwner = async (id: string, attempt: number, status: PhoneStatus) => { ownerStatus[ownerSids[attempt - 1]] = status; await engine.conferences!.status(id, "owner", ownerSids[attempt - 1]); };
-  return { engine, transport, providers, statuses, ownerStatus, ownerPrice, call, ownerDialCount, endOwner, advance: (n: number) => { now += n; }, restart: () => new CallEngine(store, providers, conferenceConfig, () => now, transport) };
+  return { engine, transport, providers, statuses, appStatus, ownerStatus, ownerPrice, call, ownerDialCount, endOwner, advance: (n: number) => { now += n; }, restart: () => new CallEngine(store, providers, conferenceConfig, () => now, transport) };
 }
 const idOf = (r: Record<string, unknown>) => r.call_id as string;
 
@@ -264,8 +268,8 @@ describe("owner joins while the assistant stays", () => {
   }));
   it("registers the assistant once and does not leak its secret in public results", () => scenario(async s => {
     const id = idOf(await s.engine.start(support)); await s.engine.tick();
-    expect(await s.engine.conferences!.assistant(id, sids.assistant)).toBe(xml);
-    expect(await s.restart().conferences!.assistant(id, sids.assistant)).toBe(xml);
+    expect(await s.engine.conferences!.assistant(id, appSid)).toBe(xml);
+    expect(await s.restart().conferences!.assistant(id, appSid)).toBe(xml);
     expect(s.transport.register).toHaveBeenCalledTimes(1);
     const task = s.engine.require(id), serialized = JSON.stringify(s.engine.view(task));
     expect(serialized).not.toContain(task.conference!.token); expect(serialized).not.toContain("wss:");
@@ -282,7 +286,7 @@ describe("owner joins while the assistant stays", () => {
   }));
   it("keeps conversation identity on the assistant leg and telephone identity on the business leg", () => scenario(async s => {
     const id = idOf(await s.engine.start(support)); await s.engine.tick();
-    const task = s.engine.require(id), result = conversation(task); result.metadata.phone_call!.call_sid = sids.assistant;
+    const task = s.engine.require(id), result = conversation(task); result.metadata.phone_call!.call_sid = appSid;
     s.engine.conferences!.observeConversation(id, result, 10);
     expect(s.engine.require(id).callSid).toBe(sids.business); expect(s.engine.require(id).conversationId).toBe(result.conversation_id);
     const wrong = structuredClone(result); wrong.metadata.phone_call!.call_sid = sids.business;
@@ -296,7 +300,7 @@ describe("owner joins while the assistant stays", () => {
   it("does not dial the business until the assistant registration is ready", () => scenario(async s => {
     const id = idOf(await s.engine.start(support)); await s.engine.tick();
     expect(s.transport.create.mock.calls.map(([, role]) => role)).toEqual(["assistant"]);
-    await s.engine.conferences!.assistant(id, sids.assistant); s.advance(15_000); await s.engine.tick();
+    await s.engine.conferences!.assistant(id, appSid); s.advance(15_000); await s.engine.tick();
     expect(s.transport.create.mock.calls.map(([, role]) => role)).toEqual(["assistant", "business"]);
   }, false));
   it("reopens cleanup when a late callback proves a rejected call exists", () => scenario(async s => {
@@ -332,6 +336,20 @@ describe("owner joins while the assistant stays", () => {
     expect(s.engine.require(id).conference?.closed).toBe(true);
     expect(s.transport.create.mock.calls.map(([, role]) => role)).toEqual(["assistant"]);
   }, false));
+  it("cleans up every participant when the receiving App call disconnects", () => scenario(async s => {
+    const id = idOf(await s.engine.start(support)); await s.engine.tick(); await s.engine.conferences!.connectOwner(id);
+    s.appStatus.value = "completed"; s.advance(15_000); await s.engine.tick();
+    expect(s.engine.require(id).conference?.closed).toBe(true);
+    expect(s.transport.finish.mock.calls.map(([, role]) => role).sort()).toEqual(["assistant", "business", "owner"]);
+  }));
+  it("keeps cancellation unconfirmed until the receiving App call has ended", () => scenario(async s => {
+    const id = idOf(await s.engine.start(support)); await s.engine.tick();
+    s.transport.finishApp.mockImplementation(async () => {});
+    expect(await s.engine.cancel(id)).toMatchObject({ termination_confirmed: false, conference: { closed: false, assistant_connection: { call_sid: appSid, telephone_status: "in-progress" } } });
+    s.appStatus.value = "completed"; await s.restart().reconcile(id);
+    expect(s.engine.view(s.engine.require(id))).toMatchObject({ termination_confirmed: true, conference: { closed: true } });
+    expect(s.transport.create).toHaveBeenCalledTimes(2);
+  }));
 });
 
 describe("real conference provider adapter with synthetic HTTP", () => {
@@ -375,4 +393,36 @@ describe("real conference provider adapter with synthetic HTTP", () => {
     const p = new LiveConferenceProviders({ TWILIO_AUTH_TOKEN: "synthetic" } as Env, conferenceConfig, async () => Response.json({ sid: sids.assistant, account_sid: cfg.twilioAccountSid, from: cfg.fromNumber, to: "app:AP" + "b".repeat(32), status: "in-progress", price: null, price_unit: null, start_time: null, duration: null }));
     await expect(p.observe(t, "assistant", sids.assistant)).rejects.toMatchObject({ code: "IDENTITY_MISMATCH" });
   });
+  it("accepts the normalized App destination when observing and terminating its participant", async () => {
+    const t = task();
+    t.conference = { token: "synthetic", closed: false, closing: true, ownerAccepted: false, registration: "not_started", legs: { business: { status: "not_started" }, assistant: { sid: sids.assistant, status: "queued" }, owner: { status: "not_started" } } };
+    const p = new LiveConferenceProviders({ TWILIO_AUTH_TOKEN: "synthetic" } as Env, conferenceConfig, async (_url, init) => Response.json({ sid: sids.assistant, account_sid: cfg.twilioAccountSid, from: cfg.fromNumber, to: "app:" + conferenceConfig.twilioApplicationSid, status: init?.method === "POST" ? "canceled" : "queued", price: null, price_unit: null, start_time: null, duration: null }));
+    await expect(p.observe(t, "assistant", sids.assistant)).resolves.toMatchObject({ sid: sids.assistant, status: "queued" });
+    await expect(p.finish(t, "assistant", "queued")).resolves.toBeUndefined();
+  });
+  it.each([
+    { sid: sids.owner }, { account_sid: "AC" + "b".repeat(32) },
+    { from: "+12025550122" }, { to: "AP" + "b".repeat(32) },
+    { to: "app:" + conferenceConfig.twilioApplicationSid }, { direction: "outbound-api" },
+  ])("rejects a receiving App call with mismatched identity %j", async wrong => {
+    const p = new LiveConferenceProviders({ TWILIO_AUTH_TOKEN: "synthetic" } as Env, conferenceConfig, async () => Response.json({ sid: appSid, account_sid: cfg.twilioAccountSid, from: cfg.fromNumber, to: conferenceConfig.twilioApplicationSid, direction: "inbound", status: "in-progress", price: null, price_unit: null, start_time: null, duration: null, ...wrong }));
+    await expect(p.observeApp(task(), appSid)).rejects.toMatchObject({ code: "IDENTITY_MISMATCH" });
+  });
+  it("reconciles a cancelled startup whose App participant already ended without dialing again", () => scenario(async s => {
+    const id = idOf(await s.engine.start(support));
+    const t = s.engine.require(id);
+    t.telephone = "dispatching"; t.cancelRequested = true;
+    t.conference!.sid = roomSid; t.conference!.legs.assistant = { sid: sids.assistant, status: "queued" };
+    t.lastError = { code: "IDENTITY_MISMATCH", message: "Synthetic earlier identity failure.", retryable: false };
+    s.engine.store.put(t);
+    const fetcher = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
+      if (String(url).endsWith(`/Calls/${sids.assistant}.json`) && init?.method === "GET") return Response.json({ sid: sids.assistant, account_sid: cfg.twilioAccountSid, from: cfg.fromNumber, to: "app:" + conferenceConfig.twilioApplicationSid, status: "busy", price: null, price_unit: "USD", start_time: null, duration: "0" });
+      if (String(url).endsWith(`/Conferences/${roomSid}.json`) && init?.method === "GET") return Response.json({ sid: roomSid, account_sid: cfg.twilioAccountSid, friendly_name: "phone-" + id, status: "completed" });
+      throw new Error("Unexpected provider request during cancelled startup reconciliation");
+    });
+    const p = new LiveConferenceProviders({ TWILIO_AUTH_TOKEN: "synthetic" } as Env, conferenceConfig, fetcher);
+    const engine = new CallEngine(s.engine.store, s.providers, conferenceConfig, () => NOW, p);
+    expect(await engine.cancel(id)).toMatchObject({ telephone_status: "not_dispatched", termination_confirmed: true, error: null, conference: { closed: true, participants: { assistant: { telephone_status: "busy" }, business: { telephone_status: "not_started" }, owner: { telephone_status: "not_started" } } } });
+    expect(fetcher.mock.calls.every(([, init]) => init?.method === "GET")).toBe(true);
+  }, false));
 });

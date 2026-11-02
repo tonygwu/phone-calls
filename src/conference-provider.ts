@@ -9,11 +9,14 @@ const cf = z.string().regex(/^CF[0-9a-fA-F]{32}$/);
 const ca = z.string().regex(/^CA[0-9a-fA-F]{32}$/);
 const participantSchema = z.object({ account_sid: z.string(), conference_sid: cf, call_sid: ca, label: z.string() });
 const roomSchema = z.object({ sid: cf, account_sid: z.string(), friendly_name: z.string(), status: z.enum(["init", "in-progress", "completed"]) });
+const appCallSchema = twilioCallSchema.extend({ direction: z.string() });
 export type Participant = z.infer<typeof participantSchema>;
 export interface ConferenceProviders {
   create(task: Task, role: ConferenceRole): Promise<{ callSid: string; conferenceSid?: string }>;
   observe(task: Task, role: ConferenceRole, sid: string): Promise<TwilioCall>;
+  observeApp(task: Task, sid: string): Promise<TwilioCall>;
   finish(task: Task, role: ConferenceRole, status: PhoneStatus): Promise<void>;
+  finishApp(task: Task, status: PhoneStatus): Promise<void>;
   close(task: Task): Promise<void>;
   register(task: Task): Promise<string>;
 }
@@ -62,11 +65,21 @@ export class LiveConferenceProviders extends LiveProviders implements Conference
     return { callSid: participant.call_sid, conferenceSid: participant.conference_sid };
   }
   private assertCall(task: Task, role: ConferenceRole, sid: string, call: TwilioCall) {
-    if (call.sid !== sid || call.account_sid !== this.c.twilioAccountSid || call.from !== this.c.fromNumber || call.to !== this.destination(task, role)) throw new CallError("IDENTITY_MISMATCH", "Conference call identity, source or destination does not match this task.", false, 502);
+    // Custom App parameters belong to the creation request, not Calls.to.
+    const destination = role === "assistant" ? `app:${this.c.twilioApplicationSid}` : this.destination(task, role);
+    if (call.sid !== sid || call.account_sid !== this.c.twilioAccountSid || call.from !== this.c.fromNumber || call.to !== destination) throw new CallError("IDENTITY_MISMATCH", "Conference call identity, source or destination does not match this task.", false, 502);
+  }
+  private assertApp(sid: string, call: z.infer<typeof appCallSchema>) {
+    if (call.sid !== sid || call.account_sid !== this.c.twilioAccountSid || call.from !== this.c.fromNumber || call.to !== this.c.twilioApplicationSid || call.direction !== "inbound") throw new CallError("IDENTITY_MISMATCH", "Assistant App call identity, source, destination or direction does not match this installation.", false, 502);
   }
   async observe(task: Task, role: ConferenceRole, sid: string) {
     const call = await this.twilio(`${this.accountPath()}/Calls/${sid}.json`, twilioCallSchema);
     this.assertCall(task, role, sid, call);
+    return call;
+  }
+  async observeApp(_task: Task, sid: string) {
+    const call = await this.twilio(`${this.accountPath()}/Calls/${sid}.json`, appCallSchema);
+    this.assertApp(sid, call);
     return call;
   }
   async finish(task: Task, role: ConferenceRole, status: PhoneStatus) {
@@ -76,11 +89,24 @@ export class LiveConferenceProviders extends LiveProviders implements Conference
     const call = await this.twilio(`${this.accountPath()}/Calls/${sid}.json`, twilioCallSchema, new URLSearchParams({ Status: status === "queued" || status === "ringing" ? "canceled" : "completed" }));
     this.assertCall(task, role, sid, call);
   }
+  async finishApp(task: Task, status: PhoneStatus) {
+    const sid = task.conference?.assistantApp?.sid;
+    if (!sid) throw new CallError("CALL_ID_UNKNOWN", "Assistant App call identity is unknown.", false, 409);
+    if (terminal.has(status)) return;
+    const call = await this.twilio(`${this.accountPath()}/Calls/${sid}.json`, appCallSchema, new URLSearchParams({ Status: status === "queued" || status === "ringing" ? "canceled" : "completed" }));
+    this.assertApp(sid, call);
+  }
   async close(task: Task) {
     if (!task.conference?.sid) return;
     try {
-      const room = await this.twilio(`${this.accountPath()}/Conferences/${task.conference.sid}.json`, roomSchema, new URLSearchParams({ Status: "completed" }));
-      if (room.sid !== task.conference.sid || room.account_sid !== this.c.twilioAccountSid || room.friendly_name !== roomName(task) || room.status !== "completed") throw new CallError("TERMINATION_UNCONFIRMED", "Conference termination is not confirmed.", true, 502);
+      const path = `${this.accountPath()}/Conferences/${task.conference.sid}.json`;
+      const assertRoom = (room: z.infer<typeof roomSchema>) => {
+        if (room.sid !== task.conference!.sid || room.account_sid !== this.c.twilioAccountSid || room.friendly_name !== roomName(task)) throw new CallError("IDENTITY_MISMATCH", "Conference identity does not match this task.", false, 502);
+      };
+      const existing = await this.twilio(path, roomSchema); assertRoom(existing);
+      if (existing.status === "completed") return;
+      const room = await this.twilio(path, roomSchema, new URLSearchParams({ Status: "completed" })); assertRoom(room);
+      if (room.status !== "completed") throw new CallError("TERMINATION_UNCONFIRMED", "Conference termination is not confirmed.", true, 502);
     } catch (error) {
       // A 404 is not evidence that all independently billed calls have ended.
       if (!(error instanceof ProviderHttpError && error.httpStatus === 404)) throw error;
