@@ -27,7 +27,9 @@ function makeScenario(store: SqlStore, autoRegister = true) {
   const statuses: Record<ConferenceRole, PhoneStatus> = { business: "in-progress", assistant: "in-progress", owner: "in-progress" };
   // A per-attempt owner status overrides the shared owner status for that call ID only.
   const ownerStatus: Record<string, PhoneStatus> = {};
-  const call = (role: ConferenceRole, sid: string = sids[role]): TwilioCall => ({ sid, account_sid: cfg.twilioAccountSid, from: cfg.fromNumber, to: role === "business" ? support.recipient : role === "owner" ? cfg.selfNumber : "app:" + conferenceConfig.twilioApplicationSid, status: role === "owner" ? ownerStatus[sid] ?? statuses.owner : statuses[role], price: "-0.01", price_unit: "USD", start_time: null, duration: null });
+  // A per-attempt owner price overrides the default price; null means not yet available.
+  const ownerPrice: Record<string, string | null> = {};
+  const call = (role: ConferenceRole, sid: string = sids[role]): TwilioCall => ({ sid, account_sid: cfg.twilioAccountSid, from: cfg.fromNumber, to: role === "business" ? support.recipient : role === "owner" ? cfg.selfNumber : "app:" + conferenceConfig.twilioApplicationSid, status: role === "owner" ? ownerStatus[sid] ?? statuses.owner : statuses[role], price: role === "owner" && sid in ownerPrice ? ownerPrice[sid] : "-0.01", price_unit: "USD", start_time: null, duration: null });
   const transport = {
     create: vi.fn(async (task: Task, role: ConferenceRole) => {
       if (role === "assistant" && autoRegister) await engine.conferences!.assistant(task.id, sids.assistant);
@@ -44,7 +46,7 @@ function makeScenario(store: SqlStore, autoRegister = true) {
   const ownerDialCount = () => transport.create.mock.calls.filter(([, role]) => role === "owner").length;
   // Report the given final status for one owner attempt through a signed status callback.
   const endOwner = async (id: string, attempt: number, status: PhoneStatus) => { ownerStatus[ownerSids[attempt - 1]] = status; await engine.conferences!.status(id, "owner", ownerSids[attempt - 1]); };
-  return { engine, transport, providers, statuses, ownerStatus, call, ownerDialCount, endOwner, advance: (n: number) => { now += n; }, restart: () => new CallEngine(store, providers, conferenceConfig, () => now, transport) };
+  return { engine, transport, providers, statuses, ownerStatus, ownerPrice, call, ownerDialCount, endOwner, advance: (n: number) => { now += n; }, restart: () => new CallEngine(store, providers, conferenceConfig, () => now, transport) };
 }
 const idOf = (r: Record<string, unknown>) => r.call_id as string;
 
@@ -192,9 +194,28 @@ describe("owner joins while the assistant stays", () => {
     s.transport.create.mockRejectedValueOnce(new Error("synthetic dispatch timeout"));
     expect(await s.engine.conferences!.connectOwner(id)).toMatchObject({ status: "dispatch_unknown" });
     await s.restart().conferences!.connectOwner(id); await s.engine.tick();
-    s.advance(60_000); await s.engine.tick();
+    // Long enough for any scheduled retry to come due twice.
+    for (let i = 0; i < 4; i++) { s.advance(30_000); await s.engine.tick(); }
     expect(s.transport.create).toHaveBeenCalledTimes(3);
+    expect(s.engine.conferences!.ownerView(s.engine.require(id))).toMatchObject({ attempts_used: 1, next_attempt_at: null });
     expect(s.engine.require(id).conference?.closed).toBe(false);
+  }));
+  it("stops inviting after the provider rejects an owner dial", () => scenario(async s => {
+    const id = idOf(await s.engine.start(support)); await s.engine.tick();
+    s.transport.create.mockRejectedValueOnce(new ProviderHttpError(401)); await s.engine.conferences!.connectOwner(id);
+    expect(s.engine.require(id).conference?.legs.owner.status).toBe("not_dispatched");
+    for (let i = 0; i < 4; i++) { s.advance(30_000); await s.engine.tick(); }
+    expect(s.ownerDialCount()).toBe(1);
+    expect(s.engine.conferences!.ownerView(s.engine.require(id))).toMatchObject({ attempts_used: 1, next_attempt_at: null });
+  }));
+  it("keeps observing an ended invitation until its price arrives", () => scenario(async s => {
+    const id = idOf(await s.engine.start(support)); await s.engine.tick(); await s.engine.conferences!.connectOwner(id);
+    s.ownerPrice[ownerSids[0]] = null;
+    await s.endOwner(id, 1, "no-answer"); await s.engine.tick(); s.advance(10_000); await s.engine.tick();
+    expect(s.ownerDialCount()).toBe(2);
+    expect(s.engine.conferences!.ownerView(s.engine.require(id)).attempts[0]).toMatchObject({ call_sid: ownerSids[0], cost_usd: null });
+    delete s.ownerPrice[ownerSids[0]]; s.advance(15_000); await s.engine.tick();
+    expect(s.engine.conferences!.ownerView(s.engine.require(id)).attempts[0]).toMatchObject({ call_sid: ownerSids[0], cost_usd: 0.01 });
   }));
   it("retries an uncertain invitation only after a callback proves that it ended", () => scenario(async s => {
     const id = idOf(await s.engine.start(support)); await s.engine.tick();
