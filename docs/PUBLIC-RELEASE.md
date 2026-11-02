@@ -5,7 +5,7 @@ The review did not deploy, provision resources, update the live agent, place cal
 
 The project is a credible early release for operators who can configure Cloudflare and the telephone providers.
 It is not a turnkey installation where two API keys immediately produce a ChatGPT plugin.
-Publication still needs the planned history cleanup after other writers finish. The owner permits the existing institutional commit email.
+Publication still needs the planned history cleanup and feature integration. The owner permits the existing institutional commit email.
 
 ## Tests: strong runtime coverage, with specific gaps
 
@@ -111,11 +111,16 @@ This change replaces them with explicit placeholders or `calls.example.com` and 
 The client guide also removes installation notes about individual profiles and a dependency on the author's separate skills checkout.
 Historical operational records remain labeled as historical.
 
-Both README images contain only decoded pixels, with no EXIF or XMP metadata.
+The two Claude Code README images contain only decoded pixels, with no EXIF or XMP metadata.
 The result image crops away the phone number, family and calendar notes, contact reference, and recording URL.
 Three opaque boxes cover the restaurant name, reservation holder, and reservation date.
 Pixels outside those boxes match the source crop exactly. The progress screenshot preserves all visible source pixels.
 The AI-generated edit was rejected because it changed terminal lettering; it is not included in the repository.
+
+The ChatGPT example also uses deterministic pixel editing and contains no source metadata.
+Opaque black boxes cover the contact's name, the personal CRM title, and every phone digit except the last two.
+The crop excludes browser identifiers, account chrome, and the recording link. Pixels outside the boxes match the source crop exactly.
+The README identifies the CRM as a separate connector and preserves the uncertainty about voicemail delivery.
 
 **Pending publication step:** earlier commits still contain the redacted local paths and hostname.
 Commit author and committer metadata also contains the author's name and institutional email address.
@@ -125,7 +130,7 @@ The license intentionally credits the author, and the public GitHub repository U
 
 The owner selected sanitization within the existing repository, with as much original history and merge structure as possible.
 A new public repository from a snapshot is not the selected approach.
-The ordered release plan below records the coordination and verification requirements. No history rewrite or force-push is authorized now.
+The ordered release plan below permits a reviewed local rewrite in isolation. Replacing shared history remains a separate, held action.
 
 ## Installation: configurable for one owner, with manual prerequisites
 
@@ -206,33 +211,35 @@ Before a broader turnkey release, add CI, provisioning/deployment tests, and an 
 
 ## Release plan and owner decisions
 
-The owner supplied these decisions on November 2, 2026. They supersede the earlier snapshot alternative.
-The reference baseline is `0a3c2b35111c47110e24370bbe74a54ee8e4cb86`; it is not a reset target.
-Preserve newer completed work and incorporate it before preparing the history rewrite.
+The owner revised this order on November 2, 2026. These decisions supersede the earlier wait-before-rehearsal instruction and snapshot alternative.
+The reference main is `55dc850ccbba8c5fcaa7fd8cb9d3381eb520a046`. It is not a reset target; preserve all newer work.
+The guided setup follow-up is `e3ebc3138d2a46069d89edcd500df05d9bf17b17`.
+The existing repository will be sanitized. A new public repository from a snapshot is not the selected approach.
 
-| Item | Status at this review | Required next evidence |
+| Item | Status at this update | Required next evidence |
 | --- | --- | --- |
-| Review, documentation, images, and license | Succeeded; fresh full and scoped reviews returned `ship` with zero findings | Repeat affected checks if later work changes the reviewed behavior |
-| Incorporate the other writer's completed work | Attempted; completed documentation commit `6523f14` is incorporated | Obtain a later completion acknowledgement and incorporate remaining finished work |
-| Sanitize the existing repository's history | Blocked on unfinished writer coordination and a reviewed execution plan | All writers idle, completed work incorporated, exact refs recorded, and required approvals |
+| Review, documentation, images, and license | Succeeded; earlier full and scoped reviews cleared the respective changes | Review new changes and repeat affected checks |
+| Coordinate the other writer's feature work | Attempted; the earlier documentation commit is incorporated | Exact feature branch, branch point, final completed tip, and any required merge commits |
+| Prepare a local sanitized candidate | Authorized in a separate disposable clone; execution awaits a fresh review of the concrete plan | Private backup, original inventories, reviewed transformation and verification commands |
+| Replace shared history and make GitHub public | Held; neither action is authorized | Completed feature integration, paused writers, fresh final review, and owner approval |
 
-The owner reports that the phone-11 Codex agent has work in progress.
-A coordination request asks that writer to confirm its latest completed commit and any unfinished writes.
-The request is queued; receipt and final completion are not yet established.
-A clean checkout or a completed earlier turn does not satisfy this barrier.
+The owner permits local preparation and execution while phone-11 continues developing on a feature branch.
+A clean checkout or receipt of a coordination message does not prove that the feature is complete.
+Record its exact branch point and final tip before integrating it. Preserve the complete required feature history, including merges.
+Do not interrupt, reset, or delete another writer's work.
 
 Apply the following order:
 
-1. Finish the review and documentation work. Preserve and incorporate newer completed commits through normal Git coordination.
-2. Wait for phone-11 to finish its authorized work and identify its final completed commits.
-3. Coordinate every other writer, incorporate completed work, and establish a shared pause on writes for the rewrite window.
-4. Complete the remaining chosen release preparation. The history rewrite must be the very last preparation step.
-5. Prepare a concrete, reviewed replacement plan and a private backup of the original repository and refs.
-6. Immediately before the eventual rewrite, save the exact inventory below, plus branch and tag targets.
-7. Rehearse the rewrite in an isolated copy. Retain commits and merges, including commits that sanitization makes empty.
-8. Use the rewrite's old-to-new commit map to compare every original commit with its rewritten counterpart.
-9. Run fresh source, secret, and privacy checks on the rewritten result, then obtain the required review and approval before replacing shared history.
-10. After an approved replacement, verify remote refs and coordinate existing clones before any writer resumes.
+1. Fetch origin and inspect the reference commit. Preserve newer work and complete ordinary review and documentation changes through normal Git coordination.
+2. Prepare a concrete local rewrite plan and obtain a fresh adversarial review before executing it.
+3. Use a separate disposable clone. Preserve original refs and objects in a private backup, then save the inventory below before rewriting.
+4. Sanitize the local candidate while feature development continues. Keep rewritten main local and disable accidental pushing from the disposable clone.
+5. Obtain phone-11's exact branch point and final completed tip. Back up its original objects and metadata before replaying required feature commits onto rewritten main.
+6. Preserve original author and committer metadata explicitly. Reconstruct each merge with its mapped, ordered parents instead of flattening it. Resolve integration conflicts without undoing sanitization.
+7. Verify the combined history, current source, secrets, and private-content checks. Run `npm run check`; require exit zero, zero failed tests, and `Build complete`.
+8. Review the exact final candidate. Record its tip, old-to-new commit map, verifier counts, and every exception under ignored `private/public-release/`.
+9. Coordinate and pause all writers. Back up uncommitted work, unpushed commits, ignored private configuration, and local checkout settings before planning fresh clones.
+10. Obtain owner approval for the exact shared-ref replacement. Replacing shared history remains the very last release-preparation step. Verify remote refs afterward and establish fresh clones before writers resume.
 
 The required original inventory command is:
 
@@ -240,13 +247,18 @@ The required original inventory command is:
 git log --all --format='%H %P %aI %cI'
 ```
 
-Save its output as private evidence with the exact ref inventory. Do not derive dates from file modification times or local date formatting.
-Compare the original and rewritten records through the commit map, rather than comparing commit IDs directly.
-Every original commit must have an accounted-for result. Its ordered parent list must map to the rewritten parent list.
-Original author and committer dates, times, and timezone offsets must match exactly, including distinct author and committer timestamps.
-Do not normalize offsets or redate commits. Preserve the original merge structure and approved commit email.
-Any dropped commit, collapsed merge, unexpected ancestry change, or timestamp change requires an explicit disposition before replacement.
-The final incorporated commits from phone-11 must remain reachable through their mapped counterparts.
+Save its output with the exact ref inventory and original raw commit objects as private evidence.
+Record machine-local non-commit references separately; they belong in the private backup, not the public candidate.
+Do not derive dates from file modification times or local date formatting.
+Compare original and rewritten records through the commit map, rather than comparing commit IDs directly.
+Every original commit must have an accounted-for result, including commits that become empty after sanitization.
+Its ordered parent list must map to the rewritten parent list. Any deliberate feature-base adjustment must be explicit in the integration record.
+Original author and committer names, emails, dates, times, and timezone offsets must match exactly, including distinct author and committer timestamps.
+The owner explicitly permits `tonywu@cs.stanford.edu`; do not rewrite it solely for privacy.
+Do not normalize offsets or redate commits. Preserve the original merge structure.
+A content rewrite invalidates existing commit signatures. Keep original signed objects in the backup and report any removed invalid signature as an exception.
+Any lost commit, collapsed merge, unexplained ancestry change, or timestamp change prevents final replacement.
+The final incorporated feature commits must remain reachable through their mapped counterparts, with no reintroduced private content.
 
-This is a preparation plan, not permission to run the rewrite, force-push, reset another checkout, or make GitHub public.
-No rewrite or force-push occurred during this review. Those actions remain subject to writer coordination and the repository's review and approval requirements.
+No force-push, visibility change, or deletion of existing clones is authorized.
+The local rehearsal authorization does not authorize shared-history replacement, provider changes, deployment, or telephone calls.

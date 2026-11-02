@@ -62,7 +62,9 @@ Before a public release, scan the current tree and reachable Git history for sec
 A clean current tree does not remove information from earlier commits.
 Do not change repository visibility or rewrite shared history without explicit authorization.
 For public-release history cleanup, follow the ordered plan and owner decisions in `docs/PUBLIC-RELEASE.md`.
-Wait for the other writer's completed work to be incorporated. History cleanup is the final release-preparation step.
+An explicitly authorized local history rehearsal may run in a disposable clone while feature development continues.
+Incorporate every completed feature commit into that candidate before final verification.
+Replacing shared history is the final release-preparation step and requires paused writers, fresh review, and owner approval.
 Preserve commit ancestry and original author and committer timestamps, including timezone offsets.
 
 ## Runtime behavior
