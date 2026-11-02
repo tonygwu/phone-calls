@@ -81,6 +81,18 @@ Model defaults live in `src/agent.ts`; identity, number, hostname, and voice con
 
 ## Operator commands
 
+`npm run setup -- init` creates private templates without overwriting existing files.
+`npm run setup` guides a first installation and reads the configured owner's Access user ID.
+`npm run setup -- check` validates local values without network access.
+`npm run setup -- owner` performs the read-only Access identity lookup separately.
+`npm run setup -- build` runs the full check with the private hostname/account and prepares deployment hashes without uploading.
+`npm run setup -- review provision|deploy HASH` records an already completed fresh `ship` review of that exact plan.
+It does not perform the review, authorize resource changes, apply a plan, or deploy.
+Use the README's first-install walkthrough. The helper refuses to run its configuration wizard over an existing installation.
+`scripts/setup-config.ts` is the shared provisioning/setup input contract.
+Remote OAuth callbacks start empty and must be copied from the actual client into the existing Access application.
+The separate localhost/loopback permissions support terminal clients. Never rerun provisioning to add a callback.
+
 `npm run preflight` checks local credentials, CLI authentication, and existing service configuration.
 `npm run inspect:accounts` reads provider identities and saves raw responses under ignored `private/`.
 `npm run provision:prepare` creates a local resource plan.

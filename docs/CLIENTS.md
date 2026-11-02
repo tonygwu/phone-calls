@@ -23,7 +23,9 @@ Enter a name, description, and deployed HTTPS URL with the `/mcp` path.
 Select OAuth, complete the owner login, and review the discovered tools.
 Account and workspace policies determine availability.
 Add the exact callback URI for that installation to the service's Access application through a reviewed update.
-Do not assume that the callback in `examples/setup.json` matches your installation.
+`examples/setup.json` starts with an empty remote callback list.
+After the client displays its exact URI, add it to the existing Access application and `oauthRedirectUris` in `private/setup.json`.
+Do not rerun provisioning to change that list.
 Keep the remote callback list restricted. The provisioner separately permits localhost and loopback callbacks for terminal clients.
 The callback URI itself is not a credential; an authorization URL can contain sensitive state or codes.
 

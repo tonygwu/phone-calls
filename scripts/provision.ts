@@ -3,14 +3,9 @@ import { spawnSync } from "node:child_process";
 import { z } from "zod";
 import { agentDefinition } from "../src/agent";
 import { configSchema } from "../src/config";
-import { canonical, digest, usPhone } from "../src/contracts";
+import { canonical, digest } from "../src/contracts";
+import { setupSchema } from "./setup-config";
 
-const { twilioNumberSid: _number, fromNumber: _from, elevenAgentId: _agent, elevenPhoneId: _phone, accessAudience: _aud, ...setupFields } = configSchema.shape;
-const setupSchema = z.strictObject({ ...setupFields,
-  selectedNumber: usPhone,
-  cloudflareAccountId: z.string().regex(/^[a-f0-9]{32}$/i),
-  oauthRedirectUris: z.array(z.url()).min(1),
-});
 const mode = process.argv[2];
 if (!["prepare", "apply"].includes(mode)) throw new Error("Usage: provision.ts prepare|apply. Read docs/DEPLOYMENT.md first.");
 const setup = setupSchema.parse(JSON.parse(readFileSync("private/setup.json", "utf8")));
@@ -64,7 +59,7 @@ async function cfCreate(body: unknown) {
 // Verify the selected account before provisioning resources.
 const account = await request(`https://api.twilio.com/2010-04-01/Accounts/${sid}.json`, twilioHeaders);
 if (account.sid !== sid || account.status !== "active") throw new Error("The selected Twilio account identity or active status does not match the reviewed plan.");
-// Only creates dedicated new resources. Never updates the digital-twin service.
+// Only creates dedicated new resources. Never updates an existing service.
 const app = await once("access", () => cfCreate(access));
 for (const [i, bypass] of bypasses.entries()) await once(`callback-access-${i}`, () => cfCreate(bypass));
 const webhook = await once("eleven-webhook", async () => z.object({ webhook_id: z.string(), webhook_secret: z.string().min(1) }).parse(await request("https://api.elevenlabs.io/v1/workspace/webhooks", elevenHeaders, JSON.stringify({ settings: { auth_type: "hmac", name: "Private phone calls", webhook_url: setup.publicOrigin + "/webhooks/elevenlabs" } }))));

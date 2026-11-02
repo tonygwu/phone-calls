@@ -10,7 +10,5 @@
   "voiceId": "JBFqnCBsd6RMkjVDRZzb",
   "selectedNumber": "+14155550123",
   "cloudflareAccountId": "00000000000000000000000000000000",
-  "oauthRedirectUris": [
-    "https://chatgpt.com/connector_platform/oauth/callback"
-  ]
+  "oauthRedirectUris": []
 }

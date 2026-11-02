@@ -151,6 +151,25 @@ The review verified local build and test behavior, not a complete new-account de
 For a turnkey claim, the next work is a tested first-installation flow with explicit credential scopes and owner-identity discovery.
 It also needs isolated provisioning/deployment tests, clearer recovery steps, and a decision about which model and Worker fields become configuration.
 
+### Follow-up: guided Cloudflare setup
+
+The owner chose to retain Cloudflare-specific hosting and defer a shared hosted service.
+The README now walks a new operator through accounts, Access sign-in, credentials, configuration, reviews, provisioning, deployment, client login, and a separately authorized first call.
+`npm run setup` supplies a local configuration wizard and reads the owner ID from the selected Access account.
+It also provides local validation, protected templates, deployment-plan hashes, and exact-hash review recording.
+These commands never purchase a number, upload a Worker, or place a call.
+The existing external-action gates remain in `provision:apply` and `deploy`.
+
+The example no longer guesses a ChatGPT callback. Its remote list starts empty; the operator adds the exact client callback later.
+The setup/provision contract permits that empty list while retaining the separate localhost/loopback registration settings.
+New isolated tests exercise the helper, its CLI owner lookup, provisioning preparation, stale review hashes, and configuration mismatch refusals.
+This addresses local onboarding gaps, not the remaining need to complete a fresh installation in independently owned provider accounts.
+
+The follow-up's fresh `npm run check` reported `152 passed (152)` Worker tests, `pass 82`, `fail 0`, and `Build complete`.
+The local walkthrough rehearsal prepared deployment hashes with `approved: false`, `deployed: false`, and `calls_placed: 0`.
+A fresh adversarial review returned `ship-with-notes` with zero blockers, zero must-fix findings, and one documentation note.
+The callback-update review requirement was then made explicit in the README and deployment guide, resolving that note.
+
 ## Other release considerations
 
 The owner selected MIT. This change adds `LICENSE` and matching package metadata, plus contribution and security-reporting guidance.

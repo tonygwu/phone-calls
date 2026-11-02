@@ -1,5 +1,86 @@
 # Configure and deploy privately
 
+For a first installation, use the ordered [README walkthrough](../README.md#set-up-your-own-service).
+It uses `npm run setup` to collect configuration and record reviewed hashes without creating resources or deploying.
+This page covers permissions, manual inputs, verification, recovery, and later maintenance.
+
+## Credentials and permissions
+
+Use `npx cf auth login` for an interactive Cloudflare login. A global `cf` installation is unnecessary.
+The CLI has its own login; a browser dashboard session alone does not authenticate it.
+The selected account must contain the service's domain and Zero Trust team.
+
+Cloudflare credentials need Worker deployment, custom-domain configuration, and Access application management permissions.
+For restricted tokens, the [Access user lookup](https://developers.cloudflare.com/api/resources/zero_trust/subresources/access/subresources/users/methods/list/) requires `Access: Audit Logs Read`.
+Custom-domain changes also require zone-scoped [Workers Routes Write permission](https://developers.cloudflare.com/workers/authorization/workers/#routes-and-custom-domains).
+Provisioning uses the [Access application creation API](https://developers.cloudflare.com/api/resources/zero_trust/subresources/access/subresources/applications/methods/create/).
+Check its current permissions before creating a restricted token. Scope credentials to the selected account and zone.
+`CLOUDFLARE_API_TOKEN` in `.dev.vars` overrides the CLI login for commands that load that file.
+
+Twilio setup uses the live Account SID and Auth Token, with account inspection, number purchase/routing, and outbound-call permissions.
+Test credentials cannot configure a production installation.
+The ElevenLabs key needs user/subscription reads, Agents configuration and calls, phone-number management, and workspace webhook creation.
+Its [key controls](https://elevenlabs.io/docs/overview/administration/workspaces/api-keys) can restrict scopes and quota.
+The scripts fail on provider refusal rather than broadening permissions automatically.
+
+## Manual configuration
+
+`npm run setup -- init` creates `.dev.vars` and `private/setup.json` without overwriting existing files.
+The interactive `npm run setup` fills the setup file and resolves the Access owner ID through one read-only lookup.
+If you prefer an editor, fill the fields below, run `npm run setup -- owner`, then run `npm run setup -- check`.
+
+| Field | Value to supply |
+| --- | --- |
+| `publicOrigin` | Your unused service HTTPS origin, with no path or trailing slash. |
+| `accessIssuer` | Your Zero Trust team's `https://TEAM.cloudflareaccess.com` origin. |
+| `cloudflareAccountId` | The Cloudflare account ID containing the domain and team, rather than a zone ID. |
+| `ownerEmail` | The exact email used to sign in to Access. |
+| `ownerSubject` | The Access user ID; the `owner` helper resolves this after you sign in to the App Launcher. |
+| `ownerName` | The name the phone assistant uses for you. |
+| `selfNumber` | Your personal US number for `recipient: "self"` and optional conference invitations. |
+| `callbackNumber` | Your personal callback number, rather than the new Twilio caller number. |
+| `twilioAccountSid` | The same live Account SID as `.dev.vars`. |
+| `selectedNumber` | An available US voice number to purchase, rather than a number you already own. |
+| `voiceId` | A voice available to your ElevenLabs account. The wizard offers an editable stock default. |
+| `oauthRedirectUris` | Exact HTTPS remote-client callbacks, or `[]` until your client displays its callback. |
+
+The App Launcher needs an owner-only policy and your chosen login method before your first sign-in.
+The owner helper requests at most two matching users and accepts only one exact email match.
+It never chooses the first result from an ambiguous response. Raw lookup output stays in `private/setup-owner-response.json`.
+The runtime still validates the configured owner email and subject; setup does not weaken owner authentication.
+
+An empty remote redirect list permits no remote client registration through that list.
+The provisioner separately permits localhost and loopback redirects for terminal MCP clients.
+After ChatGPT supplies its exact callback, obtain a fresh review of that URI and the retained owner-only Access policy.
+Apply the callback change through that reviewed update, with owner authorization for an agent's external change.
+Record the same URI in the local setup file.
+Do not rerun provisioning to add a callback.
+
+## Before the first deployment
+
+After resource creation, inspect these readbacks in the provider dashboards or their read-only APIs:
+
+- The main Access application allows only the configured owner and has managed OAuth enabled.
+- The only Access bypasses are the exact ElevenLabs and Twilio callback paths. Management and recording routes remain protected.
+- The purchased number belongs to the selected Twilio account, rejects inbound voice, and has no SMS routing.
+- The ElevenLabs agent has authentication, the expected prompt/models/voice/tools, and the requested 30-day retention.
+- The signed webhook targets your own hostname, and all four Worker secrets match the generated private files.
+
+Run `npm run setup -- build` to run the full check with your hostname/account and prepare `private/deploy-plan.json`.
+This performs no upload. The prepared file carries the exact build, secret-file, emitted-configuration, and account hashes required by `scripts/deploy.mjs`.
+After a fresh `ship` review, record its hash with `npm run setup -- review deploy REVIEWED_SHA256`.
+The recorder checks that these inputs still match. It records approval without deploying.
+For provision review, use `npm run setup -- review provision REVIEWED_SHA256` after the separate resource-plan review.
+Neither recorder performs the review itself. Only the existing `provision:apply` and `deploy` commands perform those external changes.
+
+The operator can also run the existing CLI dry run in the selected account:
+
+```sh
+npx cf deploy --prebuilt --secrets-file private/worker-secrets.json --dry-run
+```
+
+## Detailed deployment and maintenance
+
 The service uses a dedicated Worker, Twilio number, ElevenLabs agent and three Access applications. With explicit user authorization, agents may deploy the Worker and update its existing ElevenLabs agent through the review gates below. Existing authentication alone authorizes neither action. New resources, real calls and scheduled work need their own explicit authorization. Provisioning and deployment never dial a phone number.
 
 1. Copy `.dev.vars.example` to `.dev.vars`, set mode `600`, and fill provider credentials locally. Keep secrets, `private/`, dependencies and runtime state outside Git.
@@ -16,7 +97,22 @@ Cloudflare can [defer an active Durable Object's code update](https://developers
 
 The storage upgrade removes request uniqueness and budget tables inside one SQLite transaction while preserving call IDs and history. A rollback must retain this simplified schema or restore a separately verified database backup; the old release expects removed columns and cannot simply be redeployed against the upgraded database.
 
-If provisioning stops, inspect `private/provision-journal.json` and provider state. Reconcile an `intent` entry with the exact resource before recording it as done. To retire the service, disable the Access allow policy, terminate active calls and confirm termination, then disable the dedicated agent. Release the dedicated number only after confirming it belongs exclusively to this service.
+### Recover a stopped installation
+
+If provisioning stops, inspect `private/provision-journal.json` and provider state.
+An `intent` entry means that the result is uncertain. Read the corresponding provider resources before any further mutation.
+Do not erase the journal, rerun creation to inspect its outcome, or change the plan to purchase a replacement automatically.
+A confirmed creation must be reconciled into its existing journal step using the exact provider response.
+Obtain a fresh review before a changed plan or any replacement resource request.
+The helper deliberately provides no reset or force-retry command.
+
+If deployment has an uncertain result, inspect the live Worker version and custom domain before repeating it.
+Retain the exact reviewed build and private files until the outcome is known.
+
+To retire the service, disable the Access allow policy, terminate active calls and confirm termination, then disable the dedicated agent.
+Release the dedicated number only after confirming it belongs exclusively to this service.
+
+### Optional conferences and agent maintenance
 
 Owner conferences additionally require one private TwiML App and a saved `connect_owner` tool. Worker deployment alone does not update the saved ElevenLabs agent. Follow the separately reviewed [conference activation procedure](OWNER-CONFERENCES.md), then build, review and deploy the resulting Worker configuration. The existing Twilio callback path is reused; no number purchase or inbound-number reassignment is needed. Normal dialing remains available without conference configuration.
 
