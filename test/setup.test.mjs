@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { initialize, configure, checkSetup, resolveOwner, buildForDeployment, recordReview } from "../scripts/setup.ts";
 import { canonical, digest } from "../src/contracts.ts";
+import { config as runtimeConfig } from "../src/config.ts";
 
 const setup = {
   publicOrigin: "https://calls.example.net", accessIssuer: "https://example.cloudflareaccess.com",
@@ -184,3 +185,84 @@ for (const fault of ["build-failed", "wrong-domain", "alternate-urls", "secret-c
     } else assert.throws(() => buildForDeployment(cwd, env, run), /build|Build|hostname|URLs|configuration/);
   }));
 }
+
+function sipDeploymentFiles(cwd) {
+  deployedFiles(cwd);
+  const service = { ...config, conferenceSip: { identifier: "assistant_test", username: "assistant_test", phoneId: "sip_test" } };
+  const secrets = { ...read(join(cwd, "private/worker-secrets.json")), SERVICE_CONFIG: JSON.stringify(service),
+    ELEVENLABS_SIP_PASSWORD: "synthetic-sip-password", ELEVENLABS_INITIATION_SECRET: "synthetic-initiation-secret" };
+  writeFileSync(join(cwd, "private/service-config.json"), json(service));
+  writeFileSync(join(cwd, "private/worker-secrets.json"), json(secrets));
+  return secrets;
+}
+async function matchingHistoricalDeploymentPlan(cwd) {
+  const output = join(cwd, ".cloudflare/output/v0/workers/default");
+  const review = { verdict: "ship", buildSha256: await digest(readFileSync(join(output, "bundle/index.js"), "utf8")),
+    secretsSha256: await digest(readFileSync(join(cwd, "private/worker-secrets.json"), "utf8")),
+    workerConfigSha256: await digest(readFileSync(join(output, "worker.config.json"), "utf8")), cloudflareAccountId: setup.cloudflareAccountId };
+  const hash = await digest(canonical(review));
+  writeFileSync(join(cwd, "private/deploy-plan.json"), json({ hash, review }));
+  return { hash, review };
+}
+function isolatedDeployment(cwd) {
+  mkdirSync(join(cwd, "node_modules/.bin"), { recursive: true });
+  writeFileSync(join(cwd, "node_modules/.bin/cf"), `#!${process.execPath}\nrequire("node:fs").writeFileSync("private/cf-invoked", "synthetic CLI only");\n`, { mode: 0o700 });
+  return spawnSync(process.execPath, [join(root, "scripts/deploy.mjs")], { cwd, encoding: "utf8", env: { PATH: process.env.PATH } });
+}
+
+for (const key of ["ELEVENLABS_SIP_PASSWORD", "ELEVENLABS_INITIATION_SECRET"]) {
+  for (const fault of ["missing", "empty"]) {
+    for (const stage of ["preparation", "review", "deployment"]) {
+      test(`SIP ${stage} refuses ${fault} ${key} before approval or CLI invocation`, () => scenario(async cwd => {
+        const secrets = sipDeploymentFiles(cwd);
+        if (fault === "missing") delete secrets[key]; else secrets[key] = "";
+        writeFileSync(join(cwd, "private/worker-secrets.json"), json(secrets));
+        assert.throws(() => runtimeConfig(secrets), new RegExp(key));
+        if (stage === "preparation") {
+          let commands = 0;
+          assert.throws(() => buildForDeployment(cwd, env, () => { commands++; return { status: 0 }; }), new RegExp(key));
+          assert.equal(commands, 0);
+          assert.throws(() => readFileSync(join(cwd, "private/deploy-plan.json")), { code: "ENOENT" });
+        } else {
+          // A pre-existing plan may match invalid input bytes. Revalidate the runtime contract at every gate.
+          const plan = await matchingHistoricalDeploymentPlan(cwd);
+          if (stage === "review") {
+            assert.throws(() => recordReview("deploy", plan.hash, cwd), new RegExp(key));
+            assert.throws(() => readFileSync(join(cwd, "private/deploy-review.json")), { code: "ENOENT" });
+          } else {
+            writeFileSync(join(cwd, "private/deploy-review.json"), json(plan.review));
+            const result = isolatedDeployment(cwd);
+            assert.equal(result.status, 1, result.stderr);
+            assert.match(result.stderr, new RegExp(key));
+            assert.throws(() => readFileSync(join(cwd, "private/cf-invoked")), { code: "ENOENT" });
+            for (const value of Object.values(secrets).filter(value => value.startsWith("synthetic-"))) assert.ok(!result.stderr.includes(value));
+          }
+        }
+      }));
+    }
+  }
+}
+
+test("complete SIP secrets pass preparation, review, and an isolated deployment", () => scenario(async cwd => {
+  const secrets = sipDeploymentFiles(cwd);
+  assert.ok(runtimeConfig(secrets).conferenceSip);
+  const plan = buildForDeployment(cwd, env, () => ({ status: 0 }));
+  assert.equal(plan.approved, false); assert.equal(plan.deployed, false);
+  recordReview("deploy", plan.planSha256, cwd);
+  const result = isolatedDeployment(cwd);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(readFileSync(join(cwd, "private/cf-invoked"), "utf8"), "synthetic CLI only");
+}));
+
+test("deployment refuses malformed secret JSON without printing secret contents", () => scenario(async cwd => {
+  deployedFiles(cwd);
+  const sentinel = "synthetic-sensitive-invalid-JSON";
+  writeFileSync(join(cwd, "private/worker-secrets.json"), sentinel);
+  const plan = await matchingHistoricalDeploymentPlan(cwd);
+  writeFileSync(join(cwd, "private/deploy-review.json"), json(plan.review));
+  const result = isolatedDeployment(cwd);
+  assert.equal(result.status, 1, result.stderr);
+  assert.match(result.stderr, /Worker secrets|SERVICE_CONFIG/);
+  assert.ok(!result.stdout.includes(sentinel)); assert.ok(!result.stderr.includes(sentinel));
+  assert.throws(() => readFileSync(join(cwd, "private/cf-invoked")), { code: "ENOENT" });
+}));

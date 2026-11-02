@@ -28,7 +28,7 @@ export interface Env {
   ELEVENLABS_SIP_PASSWORD?: string;
   ELEVENLABS_INITIATION_SECRET?: string;
 }
-export function config(env: Env): Config {
+export function config(env: Omit<Env, "CALLS">): Config {
   if (!env.SERVICE_CONFIG) throw new CallError("SETUP_REQUIRED", "SERVICE_CONFIG has not been installed.", false, 503);
   let parsed: Config;
   try { parsed = configSchema.parse(JSON.parse(env.SERVICE_CONFIG)); }
@@ -36,7 +36,7 @@ export function config(env: Env): Config {
   if (parsed.conferenceSip) { secret(env, "ELEVENLABS_SIP_PASSWORD"); secret(env, "ELEVENLABS_INITIATION_SECRET"); }
   return parsed;
 }
-export function secret(env: Env, name: "ELEVENLABS_API_KEY" | "ELEVENLABS_WEBHOOK_SECRET" | "TWILIO_AUTH_TOKEN" | "ELEVENLABS_SIP_PASSWORD" | "ELEVENLABS_INITIATION_SECRET") {
+export function secret(env: Omit<Env, "CALLS">, name: "ELEVENLABS_API_KEY" | "ELEVENLABS_WEBHOOK_SECRET" | "TWILIO_AUTH_TOKEN" | "ELEVENLABS_SIP_PASSWORD" | "ELEVENLABS_INITIATION_SECRET") {
   const value = env[name];
   if (!value) throw new CallError("SETUP_REQUIRED", `${name} has not been installed.`, false, 503);
   return value;

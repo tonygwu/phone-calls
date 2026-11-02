@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { createInterface } from "node:readline/promises";
 import { z } from "zod";
 import { canonical } from "../src/contracts";
-import { configSchema } from "../src/config";
+import { config as runtimeConfig, configSchema } from "../src/config";
 import { setupSchema, type Setup } from "./setup-config";
 
 type Runner = (command: string, args: string[], options: { cwd: string; env: NodeJS.ProcessEnv; encoding?: "utf8"; stdio?: "inherit" }) => { status: number | null; stdout?: string; stderr?: string };
@@ -122,8 +122,10 @@ export async function configure(cwd = process.cwd(), env: NodeJS.ProcessEnv = pr
 function deploymentInputs(cwd: string) {
   const setup = parsedSetup(cwd); placeholders(setup);
   const config = configSchema.parse(load(join(cwd, "private/service-config.json")));
-  const secrets = z.object({ SERVICE_CONFIG: z.string(), ELEVENLABS_API_KEY: z.string().min(1), ELEVENLABS_WEBHOOK_SECRET: z.string().min(1), TWILIO_AUTH_TOKEN: z.string().min(1) }).parse(load(join(cwd, "private/worker-secrets.json")));
-  if (canonical(configSchema.parse(parseJson(secrets.SERVICE_CONFIG, "SERVICE_CONFIG"))) !== canonical(config)) throw new Error("The Worker secret configuration does not match private/service-config.json.");
+  const secrets = z.object({ SERVICE_CONFIG: z.string(), ELEVENLABS_API_KEY: z.string().min(1), ELEVENLABS_WEBHOOK_SECRET: z.string().min(1), TWILIO_AUTH_TOKEN: z.string().min(1),
+    ELEVENLABS_SIP_PASSWORD: z.string().optional(), ELEVENLABS_INITIATION_SECRET: z.string().optional(),
+  }).parse(load(join(cwd, "private/worker-secrets.json")));
+  if (canonical(runtimeConfig(secrets)) !== canonical(config)) throw new Error("The Worker secret configuration does not match private/service-config.json.");
   for (const [key, value] of Object.entries(setup)) {
     if (["cloudflareAccountId", "oauthRedirectUris"].includes(key)) continue;
     const field = key === "selectedNumber" ? "fromNumber" : key;
