@@ -1,5 +1,10 @@
 # Evidence and rollout
 
+This file records historical evaluations and deployments. It is not the current installation guide or a live production-status report.
+Later releases removed readiness, duplicate-request, and spending controls mentioned in older entries.
+Use [README.md](../README.md) for current behavior and [PUBLIC-RELEASE.md](PUBLIC-RELEASE.md) for the latest release assessment.
+Historical local paths are redacted as `<repo>`, `<home>`, or `<architecture-skill>` in the associated logs.
+
 The reviewed rollout is live. Worker version `481e78f1-d537-453c-96c6-35715cbd3857` was promoted at `2026-10-29T19:25:45.295729Z`, which is October 29 at 12:25 p.m. America/Los_Angeles. Its complete downloaded module matches the reviewed build. The existing agent prompt and all managed settings match the repository, including configured `gpt-6.1-sol` with low reasoning and disabled backups. The served MCP instructions and complete four-tool JSON schema match source and include optional silent rules. No real call was placed.
 
 The permission-only preparation, Worker deployment and full agent update each received a fresh `ship` review. Both agent patches succeeded. Eight HTTP boundary checks passed, and a read-only history check returned the same latest call and creation timestamp. See [rollout accounting](evidence/call-rollout.json), [Worker identity](evidence/call-worker-readback.json), [agent identity](evidence/call-agent-readback.json), and [served MCP instructions and schema](evidence/call-mcp-after.json). Three local readback attempts failed: a module-response buffer limit, an SDK-to-JSON comparison, and a declaration error introduced while correcting that comparison. Their corrected checks passed. No deployment or agent mutation was repeated. The current ChatGPT connector still has cached obsolete retry advice and needs a discovery refresh.

@@ -17,9 +17,18 @@ claude mcp add --transport http --scope user phone_calls https://<hostname>/mcp
 
 Authenticate with `claude mcp login phone_calls`, or use Claude Code's `/mcp` menu. Both installed CLIs offer `mcp login phone_calls --no-browser` for an interactive browser handoff. Registration changes the user's client configuration, so perform it only after the endpoint is deployed and verified. `clients/claude-plugin/` contains a private plugin template with `${PHONE_CALLS_MCP_URL}` for clients using a plugin install.
 
-The user installed the ChatGPT connection manually under the name **Phone Call**, completed OAuth and confirmed a read-only readiness result. The disconnected duplicate was removed. For a new installation, follow the [custom MCP plugin connection instructions](https://developers.openai.com/plugins/deploy/connect-chatgpt): add the remote MCP URL, select OAuth and complete the owner login. Add the exact callback URI displayed by that installation to this service's Access application through a reviewed update. Do not guess the callback from an example or broaden the allowed list to all URLs. The callback URI itself is not a credential; an authorization URL may contain sensitive state or codes.
+For ChatGPT, follow the [official custom MCP connection instructions](https://developers.openai.com/plugins/deploy/connect-chatgpt).
+Open [ChatGPT Plugins](https://chatgpt.com/plugins), select the plus button, and choose **Add custom MCP server**.
+Enter a name, description, and deployed HTTPS URL with the `/mcp` path.
+Select OAuth, complete the owner login, and review the discovered tools.
+Account and workspace policies determine availability.
+Add the exact callback URI for that installation to the service's Access application through a reviewed update.
+Do not assume that the callback in `examples/setup.json` matches your installation.
+Keep the remote callback list restricted. The provisioner separately permits localhost and loopback callbacks for terminal clients.
+The callback URI itself is not a credential; an authorization URL can contain sensitive state or codes.
 
-The primary Claude Code profile completed native Terminal login. Use the native Terminal browser flow for future authorizations when the side browser cannot complete a local OAuth return. Additional profiles have separate configuration folders and need separate registrations and logins. They share the same endpoint, owner and call history.
+If the browser cannot complete a local OAuth return, use the CLI's `--no-browser` flow in an interactive terminal.
+Separate client profiles need separate registrations and logins. The same endpoint shares the configured owner's call history across clients.
 
 In each client, discover the four tools and ask: “List my phone-call history. Do not place a call.” Verify that it selects `phone_calls_list_calls`. This checks authentication and tool access without dialing. The setup-readiness tool was removed; refresh a client's cached tool list if it still appears.
 
@@ -31,10 +40,19 @@ Use `skills/phone-call-brief/SKILL.md` to prepare concise payloads in Claude Cod
 
 Refresh the connected tool schema after deployment if a client rejects `rules` or still displays the obsolete instruction to keep the same `request_id` on retries. That label never prevents another call. This updates discovery; do not repeat a start request to refresh schema or check a call.
 
-To install from this repository using the skills library's existing installer, run the following command from a checkout of `github.com/tonygwu/skills`. Replace `/path/to/phone-calls` with this repository's root. The installer discovers the repository's `skills/` folder and installs only the named skill into the selected clients.
+The call-brief skill is optional. It is not required to connect to the MCP endpoint.
+Copy `skills/phone-call-brief/SKILL.md` into your client's supported skill directory.
+For Claude Code, use `~/.claude/skills/phone-call-brief/SKILL.md`.
+For Codex, use `~/.agents/skills/phone-call-brief/SKILL.md`.
+See the official [Claude Code skills](https://code.claude.com/docs/en/skills) and [Codex skills](https://developers.openai.com/codex/skills) instructions.
 
 ```sh
-python3 tools/install.py --extra-root /path/to/phone-calls --skill phone-call-brief --target claude --target codex
+# Run from this repository. Choose the client directories you use.
+mkdir -p ~/.claude/skills/phone-call-brief ~/.agents/skills/phone-call-brief
+cp skills/phone-call-brief/SKILL.md ~/.claude/skills/phone-call-brief/SKILL.md
+cp skills/phone-call-brief/SKILL.md ~/.agents/skills/phone-call-brief/SKILL.md
 ```
 
-Add `--dry-run` to inspect the installation plan first. This documentation does not install the skill or change client configuration. The skill defaults to a voicemail message and an owner follow-up about retrying. The one-call tool cannot schedule that retry, and another call or a schedule requires the user's bounded authorization.
+These commands change local client configuration only when you run them.
+The skill defaults to a voicemail message and an owner follow-up about retrying.
+The one-call tool cannot schedule that retry. Another call or a schedule requires the user's bounded authorization.

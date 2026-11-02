@@ -1,5 +1,8 @@
 # Architecture review
 
+This review records historical architecture and deployment evidence, rather than current release behavior.
+Local paths and provider version identifiers are redacted for publication. The corresponding private source files are not distributed.
+
 ## Earlier evidence audit
 
 The independent [evidence audit](../docs/reviews/architecture-evidence.md) found that the client was marked verified despite pending connections, and that thirteen source symbols were placeholders. At that stage, the model marked the production client and its exchanges proposed, cited actual functions or document paths, and regenerated all views. The later deployment evidence refresh below supersedes those proposed-state labels. The final source-token audit and model validator must both pass; structural validation alone is not evidence of symbol existence.

@@ -1,5 +1,8 @@
 # Private telephone assistant
 
+Historical architecture snapshot. These views predate removal of readiness checks, budgets, and duplicate-request controls, and omit later conference features.
+Use [the current operations guide](../../docs/OPERATIONS.md) for runtime behavior.
+
 Deployed private Cloudflare calling service, connected primary clients, and evaluated provider agent. Ordinary destination rollout is tracked separately.
 
 Start with the overview, then choose the question you want to explore.

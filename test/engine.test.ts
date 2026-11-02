@@ -31,11 +31,15 @@ describe("call validation and dispatch", () => {
   it("persists a task and returns before dispatch", async () => scenario(async (e, p) => {
     const result = await e.start(input);
     expect(result.telephone_status).toBe("pending"); expect(p.dispatch).not.toHaveBeenCalled();
+    let statusAtDispatch: string | undefined;
     p.dispatch.mockImplementationOnce(async task => {
-      expect(e.require(task.id).telephone).toBe("dispatching");
+      statusAtDispatch = e.require(task.id).telephone;
       return { success: true, message: "ok", conversation_id: "conv_test", callSid: "CA" + "3".repeat(32) };
     });
     await e.tick(); expect(p.dispatch).toHaveBeenCalledTimes(1);
+    expect(statusAtDispatch).toBe("dispatching");
+    expect(e.require(idOf(result)).telephone).toBe("queued");
+    expect(e.require(idOf(result)).lastError).toBeUndefined();
   }));
 });
 

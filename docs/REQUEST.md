@@ -1,5 +1,9 @@
 # User implementation request
 
+Historical request and implementation notes. Earlier account, budget, browser, and deployment statements describe the original private installation.
+They do not authorize actions in another installation or describe its current account state.
+Use [the README](../README.md) and [deployment guide](DEPLOYMENT.md) for current behavior and setup.
+
 This is the original implementation request. On 2026-10-28 the user authorized removal of readiness/configuration gates, duplicate-call controls and spending controls. Those older requirements below are superseded. The repository now selects GPT-6.1 Sol with low requested reasoning and concise conversation rules after measured GPT-4.1 Mini and GPT-4.1 candidates failed repetition or completion checks. A dedicated reminder prompt passed both authorized repetitions. The Worker and existing agent are now deployed after fresh reviews, with exact prompt and served-tool readbacks. See README.md, docs/OPERATIONS.md and docs/EVALUATION.md for behavior and rollout evidence.
 
 Current call briefs use `objective` for one sentence, `context` for short factual notes, and optional `rules` for silent behavioral instructions. `rules` accepts at most 20 nonempty strings, each at most 500 characters after trimming. Existing clients may omit it; the dispatcher supplies `[]` to the agent. The brief is background knowledge rather than a script. Put ownership checks, lookup conditions and reviewer findings in `rules`, and keep permitted actions and disclosures in `constraints`. A cancellation that cannot be found is not success. `examples/cancellation.json` shows the split. Real reminders and voicemail keep the supplied message verbatim. The current interface exposes four tools; `request_id` is ignored and every separate start creates another call.
