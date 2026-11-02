@@ -75,3 +75,13 @@ it("rejects an unrequested owner callback and a callback naming another particip
   expect(notInvited.status).not.toBe(200); expect((await s.task()).conference!.ownerAccepted).toBe(false);
   await s.post("cancel", { call_id: task.id });
 });
+
+it("hangs up a signed owner answer that detection identifies as a machine", async () => {
+  const s = await setup(), task = await s.task();
+  expect((await s.invite(`Bearer ${task.conference!.token}`)).status).toBe(200);
+  const owner = (await s.task()).conference!.legs.owner.sid!;
+  const answer = await s.twilio("owner-answer", { CallSid: owner, AnsweredBy: "machine_start" }, "&call_id=" + task.id);
+  expect(answer.status).toBe(200); expect(await answer.text()).toBe("<Response><Hangup/></Response>");
+  expect((await s.post("get", { call_id: task.id })).owner_connection).toMatchObject({ accepted: false, attempts_used: 1, attempts: [{ call_sid: owner, answered_by: "machine_start" }] });
+  await s.post("cancel", { call_id: task.id });
+});

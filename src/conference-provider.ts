@@ -25,6 +25,13 @@ export const conferenceUrl = (origin: string, op: string, taskId: string, role?:
   return url.toString();
 };
 export const assistantDestination = (task: Task, applicationSid: string) => `app:${applicationSid}?call_id=${task.id}`;
+// The owner invitation stops ringing before carrier voicemail usually answers.
+// Twilio may add about 5 seconds to this. The business and assistant keep 60.
+export const OWNER_RING_SECONDS = 25;
+// Synchronous answering-machine detection. It reports human, machine_start, fax
+// or unknown before Twilio requests the owner-answer TwiML, so a voicemail answer
+// hangs up before the prompt. The timeout bounds the delay a human hears.
+export const OWNER_DETECTION_SECONDS = 5;
 export const conferenceTwiml = (task: Task) => `<Dial><Conference beep="onEnter" startConferenceOnEnter="true" endConferenceOnExit="false" maxParticipants="3" record="do-not-record" waitUrl="">${roomName(task)}</Conference></Dial>`;
 
 export class LiveConferenceProviders extends LiveProviders implements ConferenceProviders {
@@ -36,12 +43,13 @@ export class LiveConferenceProviders extends LiveProviders implements Conference
     return assistantDestination(task, this.c.twilioApplicationSid);
   }
   async create(task: Task, role: ConferenceRole) {
-    const body = new URLSearchParams({ From: this.c.fromNumber, To: this.destination(task, role), Timeout: "60", Record: "false", StatusCallback: conferenceUrl(this.c.publicOrigin, "status", task.id, role), StatusCallbackMethod: "POST" });
+    const body = new URLSearchParams({ From: this.c.fromNumber, To: this.destination(task, role), Timeout: String(role === "owner" ? OWNER_RING_SECONDS : 60), Record: "false", StatusCallback: conferenceUrl(this.c.publicOrigin, "status", task.id, role), StatusCallbackMethod: "POST" });
     for (const event of ["initiated", "ringing", "answered", "completed"]) body.append("StatusCallbackEvent", event);
     // Each leg has the task's remaining time, in addition to the durable watchdog.
     body.set("TimeLimit", String(Math.max(1, Math.ceil(((task.deadline ?? task.created + task.duration * 1000) - Date.now()) / 1000))));
     if (role === "owner") {
       body.set("Url", conferenceUrl(this.c.publicOrigin, "owner-answer", task.id)); body.set("Method", "POST");
+      body.set("MachineDetection", "Enable"); body.set("MachineDetectionTimeout", String(OWNER_DETECTION_SECONDS));
       const call = await this.twilio(`${this.accountPath()}/Calls.json`, twilioCallSchema, body);
       this.assertCall(task, role, call.sid, call);
       return { callSid: call.sid };

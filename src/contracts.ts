@@ -11,7 +11,7 @@ export const startSchema = z.strictObject({
   request_id: text(128).regex(/^[a-zA-Z0-9._:-]+$/).optional().describe("Optional client label accepted for existing clients. It is ignored: every invocation starts a new call, including repeated labels."),
   task_type: z.enum(["reminder", "booking", "support", "general"]),
   recipient: z.union([z.literal("self"), usPhone]),
-  owner_join: z.enum(["disabled", "when_needed", "when_live_agent"]).optional().describe("Enable a conference that keeps the assistant on the call. when_live_agent adds the owner after a live support representative answers; when_needed adds the owner if their involvement is required. Omit or use disabled for an ordinary call. Requires conference setup. The owner must press 1 to join."),
+  owner_join: z.enum(["disabled", "when_needed", "when_live_agent"]).optional().describe("Enable a conference that keeps the assistant on the call. when_live_agent adds the owner after a live support representative answers; when_needed adds the owner if their involvement is required. Omit or use disabled for an ordinary call. Requires conference setup. The owner is rung up to three times, one invitation at a time, and must press 1 to join."),
   objective: text(2000),
   context: text(12000).describe("Short factual notes for the call, including dates and timezone. Keep behavioral instructions in rules. These notes are background, not a script. Do not supply credentials, one-time codes, or unnecessary private information."),
   rules: z.array(text(500)).max(20).optional().describe("Optional short imperative rules to follow silently, never read aloud. Put lookup, ownership, completion and reviewer guardrails here, separate from facts. At most 20 rules of 500 characters each."),
@@ -51,7 +51,7 @@ export type PhoneStatus = "pending" | "dispatching" | "dispatch_unknown" | "queu
 export type Outcome = "pending" | "unknown" | "voicemail_attempted" | "delivered_to_person" | "completed" | "partial" | "failed" | "needs_user_input";
 export type TranscriptTurn = { role: "user" | "agent"; message: string | null; time_in_call_secs: number; tool_calls?: unknown[] | null; tool_results?: unknown[] | null };
 export type ConferenceRole = "business" | "assistant" | "owner";
-export type ConferenceLeg = { status: PhoneStatus | "not_started"; sid?: string; costMicros?: number; observation?: number };
+export type ConferenceLeg = { status: PhoneStatus | "not_started"; sid?: string; costMicros?: number; observation?: number; answeredBy?: string };
 export interface ConferenceState {
   token: string;
   sid?: string;
@@ -61,6 +61,10 @@ export interface ConferenceState {
   registration: "not_started" | "dispatching" | "done" | "unknown";
   twiml?: string;
   legs: Record<ConferenceRole, ConferenceLeg>;
+  // Ended owner invitations, oldest first. legs.owner is always the latest attempt.
+  ownerHistory?: ConferenceLeg[];
+  // When the next owner invitation may start after a missed attempt.
+  ownerRetryAt?: number;
 }
 export const activeTask = (task: Task) => task.conference ? !task.conference.closed : !terminal.has(task.telephone);
 export interface Task {

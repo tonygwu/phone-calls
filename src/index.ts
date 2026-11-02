@@ -50,7 +50,9 @@ export default {
               body = { call_id: id, sid, role: z.enum(["business", "assistant", "owner"]).parse(url.searchParams.get("role")) };
             } else if (op === "owner-answer" || op === "owner-accept") {
               path = "conference-owner-answer";
-              body = { call_id: id, sid, ...(op === "owner-accept" ? { digits: form.get("Digits") ?? "" } : {}) };
+              // Answering-machine detection reports its result on the first owner-answer request.
+              const answeredBy = op === "owner-answer" ? form.get("AnsweredBy") : null;
+              body = { call_id: id, sid, ...(op === "owner-accept" ? { digits: form.get("Digits") ?? "" } : {}), ...(answeredBy ? { answered_by: answeredBy } : {}) };
             } else throw new CallError("NOT_FOUND", "Unknown conference callback.", false, 404);
           }
           return stub.fetch(`https://ledger/${path}`, { method: "POST", body: JSON.stringify(body) });

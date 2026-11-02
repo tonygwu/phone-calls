@@ -34,7 +34,7 @@ export class CallLedger extends DurableObject<Env> {
       const body = await request.json();
       let data: Record<string, unknown>;
       if (path.startsWith("/conference-")) {
-        const args = z.object({ call_id: callId, sid: z.string().regex(/^CA[0-9a-fA-F]{32}$/).optional(), role: z.enum(["business", "assistant", "owner"]).optional(), authorization: z.string().nullable().optional(), digits: z.string().optional() }).parse(body);
+        const args = z.object({ call_id: callId, sid: z.string().regex(/^CA[0-9a-fA-F]{32}$/).optional(), role: z.enum(["business", "assistant", "owner"]).optional(), authorization: z.string().nullable().optional(), digits: z.string().optional(), answered_by: z.string().max(64).optional() }).parse(body);
         const conference = engine.conferences!;
         if (path === "/conference-owner") {
           conference.authorize(args.call_id, args.authorization ?? null);
@@ -44,7 +44,7 @@ export class CallLedger extends DurableObject<Env> {
         } else {
           let xml: string;
           if (path === "/conference-assistant" && args.sid) xml = await conference.assistant(args.call_id, args.sid);
-          else if (path === "/conference-owner-answer" && args.sid) xml = await conference.ownerAnswer(args.call_id, args.sid, args.digits);
+          else if (path === "/conference-owner-answer" && args.sid) xml = await conference.ownerAnswer(args.call_id, args.sid, args.digits, args.answered_by);
           else throw new CallError("INVALID_INPUT", "Invalid conference operation.");
           await this.schedule();
           return new Response(xml, { headers: { "Content-Type": "application/xml", "Cache-Control": "no-store" } });

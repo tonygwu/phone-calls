@@ -13,6 +13,8 @@ import type { Env } from "../src/config";
 const conferenceConfig = { ...cfg, callbackNumber: "+12025550199", twilioApplicationSid: "AP" + "a".repeat(32) };
 const support = { ...input, task_type: "support" as const, recipient: "+12125550123", owner_join: "when_live_agent" as const };
 const sids = { business: "CA" + "3".repeat(32), assistant: "CA" + "4".repeat(32), owner: "CA" + "5".repeat(32) };
+// Owner invitation attempts in dialing order; the first keeps the established owner call ID.
+const ownerSids = [sids.owner, "CA" + "7".repeat(32), "CA" + "8".repeat(32), "CA" + "9".repeat(32)];
 const roomSid = "CF" + "6".repeat(32);
 const xml = '<Response><Connect><Stream url="wss://synthetic.example.invalid/audio"/></Connect></Response>';
 async function scenario(fn: (s: ReturnType<typeof makeScenario>) => Promise<void>, autoRegister = true) {
@@ -23,19 +25,26 @@ function makeScenario(store: SqlStore, autoRegister = true) {
   let now = NOW;
   let engine!: CallEngine;
   const statuses: Record<ConferenceRole, PhoneStatus> = { business: "in-progress", assistant: "in-progress", owner: "in-progress" };
-  const call = (role: ConferenceRole): TwilioCall => ({ sid: sids[role], account_sid: cfg.twilioAccountSid, from: cfg.fromNumber, to: role === "business" ? support.recipient : role === "owner" ? cfg.selfNumber : "app:" + conferenceConfig.twilioApplicationSid, status: statuses[role], price: "-0.01", price_unit: "USD", start_time: null, duration: null });
+  // A per-attempt owner status overrides the shared owner status for that call ID only.
+  const ownerStatus: Record<string, PhoneStatus> = {};
+  const call = (role: ConferenceRole, sid: string = sids[role]): TwilioCall => ({ sid, account_sid: cfg.twilioAccountSid, from: cfg.fromNumber, to: role === "business" ? support.recipient : role === "owner" ? cfg.selfNumber : "app:" + conferenceConfig.twilioApplicationSid, status: role === "owner" ? ownerStatus[sid] ?? statuses.owner : statuses[role], price: "-0.01", price_unit: "USD", start_time: null, duration: null });
   const transport = {
     create: vi.fn(async (task: Task, role: ConferenceRole) => {
       if (role === "assistant" && autoRegister) await engine.conferences!.assistant(task.id, sids.assistant);
-      return { callSid: sids[role], ...(role === "owner" ? {} : { conferenceSid: roomSid }) };
+      // Index by dial count, so a dial whose response was lost still owns its call ID.
+      if (role === "owner") return { callSid: ownerSids[ownerDialCount() - 1] };
+      return { callSid: sids[role], conferenceSid: roomSid };
     }),
-    observe: vi.fn(async (_task: Task, role: ConferenceRole) => call(role)),
-    finish: vi.fn(async (_task: Task, role: ConferenceRole) => { statuses[role] = "completed"; }),
+    observe: vi.fn(async (_task: Task, role: ConferenceRole, sid: string) => call(role, sid)),
+    finish: vi.fn(async (task: Task, role: ConferenceRole) => { if (role === "owner") ownerStatus[task.conference!.legs.owner.sid!] = "completed"; else statuses[role] = "completed"; }),
     close: vi.fn(async () => {}), register: vi.fn(async () => xml),
   } satisfies ConferenceProviders;
   const providers = fakeProviders();
   engine = new CallEngine(store, providers, conferenceConfig, () => now, transport);
-  return { engine, transport, providers, statuses, call, advance: (n: number) => { now += n; }, restart: () => new CallEngine(store, providers, conferenceConfig, () => now, transport) };
+  const ownerDialCount = () => transport.create.mock.calls.filter(([, role]) => role === "owner").length;
+  // Report the given final status for one owner attempt through a signed status callback.
+  const endOwner = async (id: string, attempt: number, status: PhoneStatus) => { ownerStatus[ownerSids[attempt - 1]] = status; await engine.conferences!.status(id, "owner", ownerSids[attempt - 1]); };
+  return { engine, transport, providers, statuses, ownerStatus, call, ownerDialCount, endOwner, advance: (n: number) => { now += n; }, restart: () => new CallEngine(store, providers, conferenceConfig, () => now, transport) };
 }
 const idOf = (r: Record<string, unknown>) => r.call_id as string;
 
@@ -83,11 +92,92 @@ describe("owner joins while the assistant stays", () => {
     const id = idOf(await s.engine.start(support)); await s.engine.tick(); await s.engine.conferences!.connectOwner(id);
     const answer = await s.engine.conferences!.ownerAnswer(id, sids.owner);
     expect(answer).toContain("<Gather"); expect(answer).toContain("Press 1"); expect(answer).not.toContain("<Conference");
+    expect(answer.match(/<Gather [^>]*>/g)).toEqual([expect.stringContaining('numDigits="1" timeout="30">')]);
     expect(s.engine.require(id).conference?.ownerAccepted).toBe(false);
     expect(await s.engine.conferences!.ownerAnswer(id, sids.owner, "2")).toBe("<Response><Hangup/></Response>");
     const accepted = await s.engine.conferences!.ownerAnswer(id, sids.owner, "1");
     expect(accepted).toContain("<Conference"); expect(s.engine.require(id).conference?.ownerAccepted).toBe(true);
     expect(s.transport.finish).not.toHaveBeenCalled();
+  }));
+  it("gives the owner 30 seconds to press 1 and plays the prompt when detection is unknown", () => scenario(async s => {
+    const id = idOf(await s.engine.start(support)); await s.engine.tick(); await s.engine.conferences!.connectOwner(id);
+    const answer = await s.engine.conferences!.ownerAnswer(id, sids.owner, undefined, "unknown");
+    expect(answer.match(/<Gather [^>]*>/g)).toEqual([expect.stringContaining('numDigits="1" timeout="30">')]);
+    expect(answer).toContain("Press 1");
+    expect(s.engine.conferences!.ownerView(s.engine.require(id)).attempts).toEqual([expect.objectContaining({ call_sid: sids.owner, answered_by: "unknown" })]);
+  }));
+  it("hangs up on a voicemail answer without the prompt and retries about 10 seconds later", () => scenario(async s => {
+    const id = idOf(await s.engine.start(support)); await s.engine.tick(); await s.engine.conferences!.connectOwner(id);
+    expect(await s.engine.conferences!.ownerAnswer(id, sids.owner, undefined, "machine_start")).toBe("<Response><Hangup/></Response>");
+    await s.endOwner(id, 1, "completed"); await s.engine.tick();
+    expect(s.ownerDialCount()).toBe(1);
+    expect(s.engine.conferences!.ownerView(s.engine.require(id))).toMatchObject({ attempts_used: 1, next_attempt_at: new Date(NOW + 10_000).toISOString() });
+    s.advance(10_000); await s.engine.tick();
+    expect(s.ownerDialCount()).toBe(2); expect(s.engine.require(id).conference?.legs.owner.sid).toBe(ownerSids[1]);
+    expect(s.engine.conferences!.ownerView(s.engine.require(id)).attempts.map(a => a.answered_by)).toEqual(["machine_start", null]);
+  }));
+  it("invites the owner at most three times, one attempt at a time", () => scenario(async s => {
+    const id = idOf(await s.engine.start(support)); await s.engine.tick(); await s.engine.conferences!.connectOwner(id);
+    const misses: PhoneStatus[] = ["no-answer", "busy", "failed"];
+    for (const [index, status] of misses.entries()) {
+      const attempt = index + 1;
+      expect(s.ownerDialCount()).toBe(attempt);
+      await s.endOwner(id, attempt, status); await s.engine.tick();
+      // The next invitation waits about 10 seconds and never overlaps the ended one.
+      expect(s.ownerDialCount()).toBe(attempt);
+      s.advance(10_000); await s.engine.tick();
+    }
+    s.advance(60_000); await s.engine.tick(); await s.engine.conferences!.connectOwner(id);
+    expect(s.ownerDialCount()).toBe(3);
+    expect(s.engine.conferences!.ownerView(s.engine.require(id))).toMatchObject({ attempts_used: 3, max_attempts: 3, next_attempt_at: null, accepted: false });
+    expect(s.engine.require(id).conference?.closed).toBe(false);
+  }));
+  it("stops retrying once the owner accepts, even after the owner later leaves", () => scenario(async s => {
+    const id = idOf(await s.engine.start(support)); await s.engine.tick(); await s.engine.conferences!.connectOwner(id);
+    await s.endOwner(id, 1, "no-answer"); await s.engine.tick(); s.advance(10_000); await s.engine.tick();
+    expect(s.ownerDialCount()).toBe(2);
+    expect(await s.engine.conferences!.ownerAnswer(id, ownerSids[1], undefined, "human")).toContain("<Gather");
+    expect(await s.engine.conferences!.ownerAnswer(id, ownerSids[1], "1")).toContain("<Conference");
+    await s.endOwner(id, 2, "completed"); await s.engine.tick(); s.advance(30_000); await s.engine.tick();
+    expect(s.ownerDialCount()).toBe(2);
+    expect(s.engine.conferences!.ownerView(s.engine.require(id))).toMatchObject({ accepted: true, attempts_used: 2, next_attempt_at: null });
+  }));
+  it.each(["assistant", "business"] as const)("stops retrying when the %s leg ends and the conference closes", role => scenario(async s => {
+    const id = idOf(await s.engine.start(support)); await s.engine.tick(); await s.engine.conferences!.connectOwner(id);
+    await s.endOwner(id, 1, "no-answer"); await s.engine.tick(); s.advance(10_000); await s.engine.tick();
+    expect(s.ownerDialCount()).toBe(2);
+    await s.endOwner(id, 2, "busy"); await s.engine.tick();
+    expect(s.engine.conferences!.ownerView(s.engine.require(id)).next_attempt_at).not.toBeNull();
+    s.statuses[role] = "completed"; await s.engine.conferences!.status(id, role, sids[role]); await s.engine.tick();
+    expect(s.engine.require(id).conference?.closed).toBe(true);
+    s.advance(10_000); await s.engine.tick(); s.advance(60_000); await s.engine.tick();
+    expect(s.ownerDialCount()).toBe(2);
+    expect(s.engine.conferences!.ownerView(s.engine.require(id)).next_attempt_at).toBeNull();
+  }));
+  it("stops retrying after cancellation", () => scenario(async s => {
+    const id = idOf(await s.engine.start(support)); await s.engine.tick(); await s.engine.conferences!.connectOwner(id);
+    await s.endOwner(id, 1, "no-answer"); await s.engine.tick(); s.advance(10_000); await s.engine.tick();
+    expect(s.ownerDialCount()).toBe(2);
+    await s.endOwner(id, 2, "no-answer"); await s.engine.tick();
+    expect(s.engine.conferences!.ownerView(s.engine.require(id)).next_attempt_at).not.toBeNull();
+    expect((await s.engine.cancel(id)).termination_confirmed).toBe(true);
+    s.advance(10_000); await s.engine.tick(); s.advance(60_000); await s.engine.tick();
+    expect(s.ownerDialCount()).toBe(2);
+    expect(s.engine.conferences!.ownerView(s.engine.require(id)).next_attempt_at).toBeNull();
+  }));
+  it("never adds an attempt for duplicate callbacks, replays, concurrent work or a restart", () => scenario(async s => {
+    const id = idOf(await s.engine.start(support)); await s.engine.tick(); await s.engine.conferences!.connectOwner(id);
+    await s.endOwner(id, 1, "no-answer"); await s.endOwner(id, 1, "no-answer");
+    await Promise.all([s.engine.tick(), s.restart().tick()]);
+    s.advance(10_000);
+    await Promise.all([s.engine.tick(), s.restart().tick(), s.engine.conferences!.status(id, "owner", ownerSids[0]), s.engine.conferences!.connectOwner(id)]);
+    expect(s.ownerDialCount()).toBe(2);
+    // A replayed answer or keypress from the ended first attempt neither joins nor accepts.
+    expect(await s.engine.conferences!.ownerAnswer(id, ownerSids[0], "1")).toBe("<Response><Hangup/></Response>");
+    expect(await s.engine.conferences!.ownerAnswer(id, ownerSids[0])).toBe("<Response><Hangup/></Response>");
+    await s.endOwner(id, 1, "no-answer"); await s.engine.tick(); s.advance(30_000); await s.engine.tick();
+    expect(s.ownerDialCount()).toBe(2);
+    expect(s.engine.require(id).conference).toMatchObject({ ownerAccepted: false, legs: { owner: { sid: ownerSids[1] } } });
   }));
   it("keeps the assistant and business connected if the owner does not answer", () => scenario(async s => {
     const id = idOf(await s.engine.start(support)); await s.engine.tick(); await s.engine.conferences!.connectOwner(id);
@@ -102,8 +192,17 @@ describe("owner joins while the assistant stays", () => {
     s.transport.create.mockRejectedValueOnce(new Error("synthetic dispatch timeout"));
     expect(await s.engine.conferences!.connectOwner(id)).toMatchObject({ status: "dispatch_unknown" });
     await s.restart().conferences!.connectOwner(id); await s.engine.tick();
+    s.advance(60_000); await s.engine.tick();
     expect(s.transport.create).toHaveBeenCalledTimes(3);
     expect(s.engine.require(id).conference?.closed).toBe(false);
+  }));
+  it("retries an uncertain invitation only after a callback proves that it ended", () => scenario(async s => {
+    const id = idOf(await s.engine.start(support)); await s.engine.tick();
+    s.transport.create.mockRejectedValueOnce(new Error("synthetic dispatch timeout")); await s.engine.conferences!.connectOwner(id);
+    s.advance(30_000); await s.engine.tick(); expect(s.ownerDialCount()).toBe(1);
+    await s.endOwner(id, 1, "no-answer"); await s.engine.tick(); s.advance(10_000); await s.engine.tick();
+    expect(s.ownerDialCount()).toBe(2);
+    expect(s.engine.conferences!.ownerView(s.engine.require(id)).attempts.map(a => a.call_sid)).toEqual([ownerSids[0], ownerSids[1]]);
   }));
   it("recovers an uncertain owner identity only after an authoritative observation", () => scenario(async s => {
     const id = idOf(await s.engine.start(support)); await s.engine.tick();
@@ -221,14 +320,22 @@ describe("real conference provider adapter with synthetic HTTP", () => {
     const fetcher = vi.fn(async (url: string | URL | Request, init?: RequestInit) => {
       requests.push({ url: String(url), form: new URLSearchParams(init?.body as string) });
       if (String(url).endsWith("/Calls.json")) return Response.json({ sid: sids.owner, account_sid: cfg.twilioAccountSid, from: cfg.fromNumber, to: cfg.selfNumber, status: "queued", price: null, price_unit: null, start_time: null, duration: null });
-      return Response.json({ account_sid: cfg.twilioAccountSid, conference_sid: roomSid, call_sid: sids.assistant, label: "assistant" });
+      const label = new URLSearchParams(init?.body as string).get("Label");
+      return Response.json({ account_sid: cfg.twilioAccountSid, conference_sid: roomSid, call_sid: label === "business" ? sids.business : sids.assistant, label });
     });
     const p = new LiveConferenceProviders({ TWILIO_AUTH_TOKEN: "synthetic" } as Env, conferenceConfig, fetcher);
-    await p.create(t, "assistant"); await p.create(t, "owner");
+    await p.create(t, "assistant"); await p.create(t, "owner"); await p.create(t, "business");
     expect(requests[0].form.get("To")).toBe(`app:${conferenceConfig.twilioApplicationSid}?call_id=${t.id}`);
     expect(requests[0].form.get("EndConferenceOnExit")).toBe("true"); expect(requests[0].form.get("ConferenceRecord")).toBe("do-not-record");
     expect(requests[1].form.get("To")).toBe(cfg.selfNumber); expect(requests[1].form.get("To")).not.toBe(conferenceConfig.callbackNumber);
-    expect(requests[1].form.get("Url")).toContain("op=owner-answer"); expect(requests[1].form.get("Timeout")).toBe("60");
+    expect(requests[1].form.get("Url")).toContain("op=owner-answer");
+    // The owner invitation rings 25 seconds, before carrier voicemail usually answers; the business and assistant legs keep 60.
+    expect(requests.map(r => r.form.get("Timeout"))).toEqual(["60", "25", "60"]);
+    expect(requests[2].form.get("To")).toBe(support.recipient); expect(requests[2].form.get("Label")).toBe("business");
+    // Synchronous detection on the owner leg only, bounded so a human hears the prompt within about 5 seconds.
+    expect(requests.map(r => r.form.get("MachineDetection"))).toEqual([null, "Enable", null]);
+    expect(requests.map(r => r.form.get("MachineDetectionTimeout"))).toEqual([null, "5", null]);
+    expect(requests[1].form.get("AsyncAmd")).toBeNull();
   });
   it("registers raw text TwiML and rejects JSON-wrapped connection output", async () => {
     const t = task(); t.input = { ...t.input, rules: ["Let the owner authenticate directly."] }; let body = xml;
