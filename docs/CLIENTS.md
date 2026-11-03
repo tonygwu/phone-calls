@@ -2,6 +2,10 @@
 
 Use the deployed `https://<hostname>/mcp` endpoint. Each client authorizes itself through Cloudflare Managed OAuth. Do not copy an ElevenLabs or Twilio key into a client, and do not configure a shared bearer token as a substitute for owner authentication.
 
+The [README's client setup](../README.md#7-connect-your-client-and-check-without-calling) also covers Gemini CLI, Claude, Cowork, and Antigravity.
+Those additional instructions follow the vendors' documentation; they have not been tested end to end with this service.
+Complete the owner login and history-list check below before authorizing a call from a new client.
+
 For Codex, the installed CLI supports:
 
 ```sh

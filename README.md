@@ -1,6 +1,6 @@
 # Phone Calls MCP
 
-Make phone calls from Claude Code, ChatGPT, or Codex through a self-hosted [Model Context Protocol](https://modelcontextprotocol.io/) server.
+Make phone calls from ChatGPT, Claude, Cowork, Claude Code, Codex, Gemini CLI, or Antigravity through a self-hosted [Model Context Protocol](https://modelcontextprotocol.io/) server.
 The service uses ElevenLabs for the voice assistant, Twilio for telephone calls, and Cloudflare Workers for hosting.
 It can cancel restaurant reservations, make bookings, deliver reminders, or navigate customer support.
 Calls continue after the chat disconnects, and the assistant can retrieve their results later.
@@ -69,7 +69,7 @@ You need:
 - **Cloudflare:** an account with Workers, an active domain, and a Zero Trust team with an Access login method.
 - **Twilio:** a funded account with US outbound voice enabled, its Account SID, and its Auth Token.
 - **ElevenLabs:** an account with Agents access, an API key, and access to the models and voice in [src/agent.ts](src/agent.ts).
-- **A client:** ChatGPT with custom MCP access, Claude Code, or Codex. Your client's account and workspace policies still apply.
+- **A client:** ChatGPT, Claude, Cowork, Claude Code, Codex, Gemini CLI, or Antigravity, with remote MCP and OAuth support. Your client's account and workspace policies still apply.
 
 Twilio and ElevenLabs charge for usage, and the dedicated Twilio number has a recurring charge.
 Cloudflare and your domain can also have charges. Review each provider's plan before creating resources.
@@ -254,6 +254,29 @@ claude mcp login phone_calls
 codex mcp add phone_calls --url https://YOUR-HOSTNAME/mcp
 codex mcp login phone_calls
 ```
+
+**Claude and Cowork**
+
+Add a custom connector in **Customize → Connectors**, enter `https://YOUR-HOSTNAME/mcp`, and complete the owner's OAuth login.
+See [Anthropic's remote connector guide](https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp) for account and workspace setup.
+
+**Gemini CLI**
+
+```sh
+gemini mcp add --transport http --scope user phone_calls https://YOUR-HOSTNAME/mcp
+```
+
+Open Gemini CLI and run `/mcp auth phone_calls` to sign in.
+See [Gemini CLI's MCP guide](https://geminicli.com/docs/tools/mcp-server/) for its HTTP and OAuth settings.
+
+**Antigravity**
+
+Follow [Antigravity's MCP guide](https://antigravity.google/docs/mcp) to add a remote server named `phone_calls`, with `serverUrl` set to `https://YOUR-HOSTNAME/mcp`.
+Use **Authenticate** in its MCP settings to complete the owner's OAuth login.
+
+If a client uses a remote OAuth callback, add its exact URI to the existing Access application and `oauthRedirectUris` in `private/setup.json` through a reviewed update.
+Use that client's callback, keep the owner-only policy, and do not rerun provisioning.
+Terminal localhost and loopback callbacks use the provisioner's separate permissions.
 
 In your chosen client, ask:
 
