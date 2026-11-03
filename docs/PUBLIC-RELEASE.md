@@ -117,10 +117,10 @@ Three opaque boxes cover the restaurant name, reservation holder, and reservatio
 Pixels outside those boxes match the source crop exactly. The progress screenshot preserves all visible source pixels.
 The AI-generated edit was rejected because it changed terminal lettering; it is not included in the repository.
 
-The ChatGPT example also uses deterministic pixel editing and contains no source metadata.
-Opaque black boxes cover the contact's name, the personal CRM title, and every phone digit except the last two.
-The crop excludes browser identifiers, account chrome, and the recording link. Pixels outside the boxes match the source crop exactly.
-The README identifies the CRM as a separate connector and preserves the uncertainty about voicemail delivery.
+The ChatGPT example uses deterministic pixel editing and preserves the full supplied screenshot, including the ChatGPT interface.
+Opaque black boxes cover the contact's name, the personal CRM title and icon, account initials, and every phone digit except the last two.
+The exported image contains no source metadata. Pixels outside the boxes match the source exactly.
+The README identifies the CRM as a separate connector, and the screenshot preserves the uncertainty about voicemail delivery.
 
 **Pending publication step:** earlier commits still contain the redacted local paths and hostname.
 Commit author and committer metadata also contains the author's name and institutional email address.

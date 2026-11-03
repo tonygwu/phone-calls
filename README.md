@@ -26,13 +26,11 @@ The [fictional cancellation example](examples/cancellation.json) shows the compl
 
 ## Example: ask ChatGPT to make a call
 
-In this example, ChatGPT looks up a contact through a separate CRM connector, then uses Phone Call to ask about missing keys.
-The CRM connector is separate from this project. You can supply a phone number directly instead.
-The screenshot shows the request and the reported result, with private details covered and browser information cropped out.
+Example asking ChatGPT to make a call:
 
 ![ChatGPT uses Phone Call and reports a voicemail attempt, with the contact name and most phone digits blacked out](docs/images/chatgpt-phone-call.png)
 
-The call reached voicemail. The transcript records the assistant's message, but voicemail delivery was not independently verified.
+Contact lookup uses a separate CRM connector. You can also supply a phone number directly.
 
 ## Tools
 
